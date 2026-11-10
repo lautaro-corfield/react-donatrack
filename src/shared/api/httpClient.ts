@@ -18,11 +18,17 @@ export const httpClient = axios.create({
   timeout: 10000,
 });
 
+const publicAuthPaths = new Set([
+  '/api/auth/login',
+  '/api/auth/social/google',
+  '/api/auth/social/google/registro-donante',
+]);
+
 // Interceptor de Request: inyección transparente del token de sesión
 httpClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().token;
-    if (token && config.headers) {
+    if (token && config.headers && !publicAuthPaths.has(config.url ?? '')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -36,7 +42,7 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !publicAuthPaths.has(error.config?.url ?? '')) {
       // 1. Limpieza imperativa del estado de autenticación en Zustand
       useAuthStore.getState().logout();
 

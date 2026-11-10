@@ -147,6 +147,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const DONANTE_NAV_ITEMS: NavItem[] = [
+  { label: 'Mi actividad', path: '/dashboard/mi-actividad', icon: DonantesIcon },
+  { label: 'Mis donaciones', path: '/dashboard/mis-donaciones', icon: DonacionesIcon },
+  { label: 'Entidades beneficiarias', path: '/dashboard/directorio', icon: EntidadesIcon },
+  { label: 'Mis avisos', path: '/dashboard/mis-avisos', icon: HeartHandshakeIcon },
+];
+
 /**
  * Menú lateral de navegación para el Dashboard de DonaTrack.
  * Soporta indicación visual de ruta activa, filtrado por rol ADMIN y cierre de sesión seguro.
@@ -179,7 +186,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
   };
 
   // Filtrado de pestañas según permisos
-  const visibleNavItems = NAV_ITEMS.filter((item) => {
+  const visibleNavItems = user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : NAV_ITEMS.filter((item) => {
     if (item.requiredRole === 'ADMIN') {
       return isAdmin;
     }

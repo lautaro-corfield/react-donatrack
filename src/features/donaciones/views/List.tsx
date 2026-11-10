@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   HStack,
+  Stack,
   Table,
   Text,
   VStack,
@@ -12,7 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useDonacionesStore } from '../model/donacionesStore';
-import type { CategoriaDonacion, EstadoDonacion } from '../model/types';
+import type { Donacion } from '../model/types';
 
 const PlusIcon = () => (
   <svg
@@ -63,37 +64,13 @@ const TrashIcon = () => (
   </svg>
 );
 
-const getEstadoColor = (estado: EstadoDonacion) => {
-  switch (estado) {
-    case 'RECIBIDA':
-      return 'green';
-    case 'EN_TRANSITO':
-      return 'blue';
-    case 'ENTREGADA':
-      return 'purple';
-    case 'PENDIENTE':
-      return 'yellow';
-    case 'CANCELADA':
-      return 'red';
-    default:
-      return 'gray';
+function estadoVisible(donacion: Donacion) {
+  if (donacion.donacionesSegmentadas.length > 0 &&
+      donacion.donacionesSegmentadas.every(segmento => segmento.estado === 'EN_DEPOSITO')) {
+    return 'En depósito';
   }
-};
-
-const getCategoriaColor = (categoria: CategoriaDonacion) => {
-  switch (categoria) {
-    case 'ALIMENTOS':
-      return 'teal';
-    case 'MEDICAMENTOS':
-      return 'red';
-    case 'DINERO':
-      return 'green';
-    case 'ROPA':
-      return 'cyan';
-    default:
-      return 'gray';
-  }
-};
+  return donacion.estado === 'ADJUDICADA' ? 'Adjudicada' : 'Pendiente';
+}
 
 /**
  * Vista principal de listado para el dominio Donaciones (List.tsx).
@@ -102,6 +79,8 @@ const getCategoriaColor = (categoria: CategoriaDonacion) => {
 export const DonacionesListView = () => {
   const navigate = useNavigate();
   const donaciones = useDonacionesStore((state) => state.donaciones);
+  const isLoading = useDonacionesStore((state) => state.isLoading);
+  const error = useDonacionesStore((state) => state.error);
   const fetchDonaciones = useDonacionesStore((state) => state.fetchDonaciones);
   const deleteDonacion = useDonacionesStore((state) => state.deleteDonacion);
 
@@ -109,7 +88,7 @@ export const DonacionesListView = () => {
     fetchDonaciones();
   }, [fetchDonaciones]);
 
-  const handleDelete = async (id: string, descripcion: string) => {
+  const handleDelete = async (id: number, descripcion: string) => {
     if (window.confirm(`¿Estás seguro de eliminar la donación: "${descripcion}"?`)) {
       await deleteDonacion(id);
     }
@@ -119,7 +98,7 @@ export const DonacionesListView = () => {
     <VStack gap="6" align="stretch" maxW="6xl" mx="auto">
       <PageHeader
         title="Donaciones"
-        subtitle="Control de inventario, trazabilidad y estado de entregas en tiempo real."
+        subtitle="Ingresos al depósito, donantes y destinos asignados."
         badge={
           <Badge colorPalette="teal" variant="subtle" px="2.5" py="1" borderRadius="full">
             {donaciones.length} registros
@@ -138,14 +117,14 @@ export const DonacionesListView = () => {
         }
       />
 
+      {error && <Text role="alert" color="red.700">{error}</Text>}
       <Card.Root borderWidth="1px" borderRadius="2xl" shadow="sm" bg="white" overflow="hidden">
         <Box overflowX="auto">
           <Table.Root size="md" variant="line">
             <Table.Header bg="gray.50">
               <Table.Row>
                 <Table.ColumnHeader color="gray.600">Descripción</Table.ColumnHeader>
-                <Table.ColumnHeader color="gray.600">Categoría</Table.ColumnHeader>
-                <Table.ColumnHeader color="gray.600">Cantidad</Table.ColumnHeader>
+                <Table.ColumnHeader color="gray.600">Bienes</Table.ColumnHeader>
                 <Table.ColumnHeader color="gray.600">Donante</Table.ColumnHeader>
                 <Table.ColumnHeader color="gray.600">Destino</Table.ColumnHeader>
                 <Table.ColumnHeader color="gray.600">Estado</Table.ColumnHeader>
@@ -158,8 +137,8 @@ export const DonacionesListView = () => {
             <Table.Body>
               {donaciones.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan={7} textAlign="center" py="8" color="gray.500">
-                    No se encontraron donaciones registradas. Haz clic en "Nueva Donación" para comenzar.
+                  <Table.Cell colSpan={6} textAlign="center" py="8" color="gray.500">
+                    {isLoading ? 'Cargando donaciones…' : error ? 'Listado no disponible.' : 'Todavía no hay donaciones registradas.'}
                   </Table.Cell>
                 </Table.Row>
               ) : (
@@ -169,37 +148,26 @@ export const DonacionesListView = () => {
                       {d.descripcion}
                     </Table.Cell>
                     <Table.Cell>
-                      <Badge
-                        colorPalette={getCategoriaColor(d.categoria)}
-                        variant="subtle"
-                        size="xs"
-                      >
-                        {d.categoria}
-                      </Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text fontWeight="semibold" color="gray.700">
-                        {d.cantidad.toLocaleString()}{' '}
-                        <Text as="span" fontSize="xs" color="gray.500">
-                          {d.unidadMedida}
-                        </Text>
-                      </Text>
+                      <Stack gap="1" fontSize="sm">
+                        {d.donacionesSegmentadas.map(segmento => (
+                          <Text key={segmento.id}>
+                            {segmento.subCategoria} · {segmento.cantidad.toLocaleString('es-AR')} {segmento.unidad?.toLowerCase()}
+                          </Text>
+                        ))}
+                      </Stack>
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {d.donanteNombre}
+                      {d.donanteNombre ?? '—'}
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {d.entidadDestino}
+                      {[...new Set(d.donacionesSegmentadas.map(segmento =>
+                        segmento.entidadBeneficiariaNombre ||
+                        (segmento.entidadBeneficiariaAsignadaId ? `Entidad ${segmento.entidadBeneficiariaAsignadaId}` : 'Sin asignar')
+                      ))].join(', ') || 'Sin asignar'}
                     </Table.Cell>
                     <Table.Cell>
-                      <Badge
-                        colorPalette={getEstadoColor(d.estado)}
-                        variant="solid"
-                        size="xs"
-                        borderRadius="full"
-                        px="2"
-                      >
-                        {d.estado}
+                      <Badge colorPalette={d.estado === 'ADJUDICADA' ? 'green' : 'yellow'} variant="subtle">
+                        {estadoVisible(d)}
                       </Badge>
                     </Table.Cell>
                     <Table.Cell textAlign="right">

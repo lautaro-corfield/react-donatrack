@@ -1,154 +1,49 @@
 import { create } from 'zustand';
-import { donacionesApi } from '../api/donacionesApi';
-import type { CreateDonacionDTO, DonacionesState, Donacion, UpdateDonacionDTO } from './types';
+import { donacionesApi, errorDonacion } from '../api/donacionesApi';
+import type { DonacionesState } from './types';
 
-// Datos iniciales de demostración para visualización inmediata
-const INITIAL_MOCK_DONACIONES: Donacion[] = [
-  {
-    id: 'don-001',
-    descripcion: 'Lote de leche en polvo y alimentos no perecederos',
-    categoria: 'ALIMENTOS',
-    cantidad: 250,
-    unidadMedida: 'kg',
-    estado: 'RECIBIDA',
-    donanteNombre: 'Supermercados del Sur S.A.',
-    entidadDestino: 'Comedor Los Piletones',
-    fechaRegistro: '2026-11-01',
-    observaciones: 'Fecha de caducidad superior a 12 meses.',
-  },
-  {
-    id: 'don-002',
-    descripcion: 'Cajas de gasas, analgésicos y botiquines de primeros auxilios',
-    categoria: 'MEDICAMENTOS',
-    cantidad: 40,
-    unidadMedida: 'cajas',
-    estado: 'EN_TRANSITO',
-    donanteNombre: 'Laboratorios Farmasur',
-    entidadDestino: 'Hospital Comunitario San Roque',
-    fechaRegistro: '2026-11-04',
-    observaciones: 'Mantener en ambiente fresco.',
-  },
-  {
-    id: 'don-003',
-    descripcion: 'Aporte monetario para fondo de emergencia invernal',
-    categoria: 'DINERO',
-    cantidad: 500000,
-    unidadMedida: 'ARS',
-    estado: 'ENTREGADA',
-    donanteNombre: 'Fundación Solidaria Andina',
-    entidadDestino: 'Hogar Esperanza de Vida',
-    fechaRegistro: '2026-11-06',
-    observaciones: 'Transferencia bancaria directa con comprobante validado.',
-  },
-];
-
-export const useDonacionesStore = create<DonacionesState>((set, get) => ({
-  donaciones: INITIAL_MOCK_DONACIONES,
-  selectedDonacion: null,
+export const useDonacionesStore = create<DonacionesState>((set) => ({
+  donaciones: [],
   isLoading: false,
   error: null,
 
   fetchDonaciones: async () => {
     set({ isLoading: true, error: null });
     try {
-      const data = await donacionesApi.getAll();
-      if (Array.isArray(data) && data.length > 0) {
-        set({ donaciones: data, isLoading: false });
-      } else {
-        // Mantiene datos locales de respaldo si la respuesta está vacía
-        set({ isLoading: false });
-      }
-    } catch {
-      // Fallback a mock data para entorno de desarrollo local sin microservicio activo
+      const donaciones = await donacionesApi.getAll();
+      set({ donaciones });
+    } catch (error) {
+      set({ error: errorDonacion(error, 'No se pudo cargar el listado de donaciones.') });
+    } finally {
       set({ isLoading: false });
     }
   },
 
-  fetchDonacionById: async (id: string) => {
-    set({ isLoading: true, error: null });
+  fetchDonacionById: async (id) => {
+    set({ error: null });
     try {
-      const data = await donacionesApi.getById(id);
-      set({ selectedDonacion: data, isLoading: false });
-      return data;
-    } catch {
-      // Búsqueda en el estado local de respaldo
-      const local = get().donaciones.find((d) => d.id === id) || null;
-      set({ selectedDonacion: local, isLoading: false });
-      return local;
+      return await donacionesApi.getById(id);
+    } catch (error) {
+      set({ error: errorDonacion(error, 'No se pudo cargar la donación solicitada.') });
+      return null;
     }
   },
 
-  createDonacion: async (dto: CreateDonacionDTO) => {
-    set({ isLoading: true, error: null });
-    try {
-      const created = await donacionesApi.create(dto);
-      set((state) => ({
-        donaciones: [created, ...state.donaciones],
-        isLoading: false,
-      }));
-      return created;
-    } catch {
-      // Creación local para desarrollo
-      const localCreated: Donacion = {
-        ...dto,
-        id: `don-${Date.now().toString().slice(-4)}`,
-        fechaRegistro: new Date().toISOString().split('T')[0],
-      };
-      set((state) => ({
-        donaciones: [localCreated, ...state.donaciones],
-        isLoading: false,
-      }));
-      return localCreated;
-    }
+  createDonacion: async (dto) => {
+    await donacionesApi.create(dto);
   },
 
-  updateDonacion: async (id: string, dto: UpdateDonacionDTO) => {
-    set({ isLoading: true, error: null });
-    try {
-      const updated = await donacionesApi.update(id, dto);
-      set((state) => ({
-        donaciones: state.donaciones.map((d) => (d.id === id ? updated : d)),
-        selectedDonacion: updated,
-        isLoading: false,
-      }));
-      return updated;
-    } catch {
-      // Actualización local para desarrollo
-      let updatedLocal: Donacion | null = null;
-      set((state) => {
-        const nextList = state.donaciones.map((d) => {
-          if (d.id === id) {
-            updatedLocal = { ...d, ...dto };
-            return updatedLocal;
-          }
-          return d;
-        });
-        return {
-          donaciones: nextList,
-          selectedDonacion: updatedLocal,
-          isLoading: false,
-        };
-      });
-      return updatedLocal!;
-    }
+  updateDonacion: async (id, dto) => {
+    await donacionesApi.update(id, dto);
   },
 
-  deleteDonacion: async (id: string) => {
-    set({ isLoading: true, error: null });
+  deleteDonacion: async (id) => {
+    set({ error: null });
     try {
       await donacionesApi.delete(id);
-      set((state) => ({
-        donaciones: state.donaciones.filter((d) => d.id !== id),
-        isLoading: false,
-      }));
-    } catch {
-      // Eliminación local para desarrollo
-      set((state) => ({
-        donaciones: state.donaciones.filter((d) => d.id !== id),
-        isLoading: false,
-      }));
+      set(state => ({ donaciones: state.donaciones.filter(donacion => donacion.id !== id) }));
+    } catch (error) {
+      set({ error: errorDonacion(error, 'No se pudo eliminar la donación.') });
     }
   },
-
-  clearError: () => set({ error: null }),
 }));

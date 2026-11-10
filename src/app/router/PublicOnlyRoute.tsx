@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth';
 
 /**
@@ -8,8 +8,13 @@ import { useAuthStore } from '@/features/auth';
 export const PublicOnlyRoute = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
+  const { state } = useLocation();
+  const origen = state?.from;
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    const destino = typeof origen?.pathname === 'string' && origen.pathname.startsWith('/dashboard/')
+      ? { pathname: origen.pathname, hash: origen.hash }
+      : '/dashboard';
+    return <Navigate to={destino} replace />;
   }
 
   return <Outlet />;

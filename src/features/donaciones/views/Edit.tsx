@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Box, Spinner, Text, VStack } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
+import { errorDonacion } from '../api/donacionesApi';
 import { DonacionForm } from '../components/Form';
 import { useDonacionesStore } from '../model/donacionesStore';
-import type { CreateDonacionDTO, Donacion } from '../model/types';
+import type { UpdateDonacionDTO, Donacion } from '../model/types';
 
 /**
  * Vista para modificar una donación existente (Edit.tsx).
@@ -19,6 +20,7 @@ export const DonacionesEditView = () => {
   const [donacion, setDonacion] = useState<Donacion | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -31,12 +33,15 @@ export const DonacionesEditView = () => {
     load();
   }, [id, fetchDonacionById]);
 
-  const handleSubmit = async (data: CreateDonacionDTO) => {
+  const handleSubmit = async (data: UpdateDonacionDTO) => {
     if (!id) return;
     setIsSubmitting(true);
+    setError('');
     try {
       await updateDonacion(id, data);
       navigate('/dashboard/donaciones');
+    } catch (error) {
+      setError(errorDonacion(error, 'No se pudo actualizar la donación.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -73,8 +78,10 @@ export const DonacionesEditView = () => {
         subtitle={`Modificando registro: ${donacion.descripcion} (${donacion.id})`}
       />
 
+      {error && <Text color="red.700" role="alert">{error}</Text>}
       <DonacionForm
-        initialData={donacion}
+        modo="editar"
+        descripcion={donacion.descripcion}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
         onCancel={() => navigate('/dashboard/donaciones')}

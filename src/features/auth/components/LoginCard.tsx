@@ -2,10 +2,12 @@ import {
   Card,
   Heading,
   Image,
+  Link as ChakraLink,
   Separator,
   Text,
   VStack,
 } from '@chakra-ui/react';
+import { Link as RouterLink } from 'react-router-dom';
 import { LoginForm } from './LoginForm';
 
 /**
@@ -44,6 +46,13 @@ export const LoginCard = () => {
       <Card.Body py="6">
         <VStack gap="6" width="100%">
           <LoginForm />
+
+          <Text fontSize="sm" color="gray.600">
+            ¿Todavía no tenés cuenta?{' '}
+            <ChakraLink asChild color="teal.700" fontWeight="semibold">
+              <RouterLink to="/registro/donante">Registrate como donante</RouterLink>
+            </ChakraLink>
+          </Text>
 
           <Separator />
         </VStack>

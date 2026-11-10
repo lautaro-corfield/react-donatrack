@@ -3,13 +3,20 @@ import { Box, Flex, Spinner, Text, VStack } from '@chakra-ui/react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useAuthStore } from '../model/authStore';
 
-export const GoogleLoginButton = () => {
+export const GoogleLoginButton = ({
+  onCredential,
+  buttonText = 'signin_with',
+}: {
+  onCredential?: (idToken: string) => Promise<void>;
+  buttonText?: 'signin_with' | 'signup_with';
+} = {}) => {
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const isLoading = useAuthStore((state) => state.isLoading);
   const authError = useAuthStore((state) => state.error);
   const clearAuthError = useAuthStore((state) => state.clearError);
 
   const [localError, setLocalError] = useState<string | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
 
   const errorMessage = localError || authError;
 
@@ -23,9 +30,13 @@ export const GoogleLoginButton = () => {
     }
 
     try {
-      await loginWithGoogle(credentialResponse.credential);
+      if (onCredential) {
+        setLocalLoading(true);
+        await onCredential(credentialResponse.credential);
+      } else {
+        await loginWithGoogle(credentialResponse.credential);
+      }
     } catch (error: unknown) {
-      console.error('Fallo en el intercambio de tokens:', error);
       const responseData =
         error && typeof error === 'object' && 'response' in error
           ? (error as { response?: { data?: unknown } }).response?.data
@@ -44,6 +55,8 @@ export const GoogleLoginButton = () => {
           : 'Error al comunicarse con el servidor de autenticación.';
 
       setLocalError(message);
+    } finally {
+      setLocalLoading(false);
     }
   };
 
@@ -52,7 +65,7 @@ export const GoogleLoginButton = () => {
     setLocalError('Fallo en la autenticación con el SDK de Google.');
   };
 
-  if (isLoading) {
+  if (isLoading || localLoading) {
     return (
       <Flex direction="column" align="center" justify="center" py="4" gap="3">
         <Spinner size="md" colorPalette="teal" />
@@ -74,11 +87,11 @@ export const GoogleLoginButton = () => {
         <GoogleLogin
           onSuccess={handleSuccess}
           onError={handleError}
-          useOneTap
+          useOneTap={!onCredential}
           shape="pill"
           theme="outline"
           size="large"
-          text="signin_with"
+          text={buttonText}
         />
       </Box>
 
