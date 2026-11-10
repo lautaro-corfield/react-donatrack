@@ -3,8 +3,12 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { PublicOnlyRoute } from './PublicOnlyRoute';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { LoginPage } from '@/pages/LoginPage';
-import { DonantesPage } from '@/pages/DonantesPage';
 import { EntidadesPage } from '@/pages/EntidadesPage';
+import {
+  DonantesHubView,
+  DonantesCreateView,
+  DonantesListView,
+} from '@/features/donantes';
 import {
   DonacionesListView,
   DonacionesCreateView,
@@ -42,8 +46,12 @@ export const AppRouter = () => {
             <Route path="supervisores" element={<SupervisoresListView />} />
             <Route path="supervisores/nuevo" element={<SupervisoresCreateView />} />
 
+            {/* Feature: Donantes */}
+            <Route path="donantes" element={<DonantesHubView />} />
+            <Route path="donantes/nuevo" element={<DonantesCreateView />} />
+            <Route path="donantes/lista" element={<DonantesListView />} />
+
             {/* Placeholders en proceso de migración FSD */}
-            <Route path="donantes" element={<DonantesPage />} />
             <Route path="entidades" element={<EntidadesPage />} />
           </Route>
         </Route>
