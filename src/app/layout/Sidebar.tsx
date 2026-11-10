@@ -163,6 +163,10 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const ENTIDAD_NAV_ITEMS: NavItem[] = [
+  { label: 'Mis necesidades', path: '/dashboard/necesidades', icon: EntidadesIcon },
+];
+
 const DONANTE_NAV_ITEMS: NavItem[] = [
   { label: 'Mi actividad', path: '/dashboard/mi-actividad', icon: DonantesIcon },
   { label: 'Mis donaciones', path: '/dashboard/mis-donaciones', icon: DonacionesIcon },
@@ -202,7 +206,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
   };
 
   // Filtrado de pestañas según permisos
-  const visibleNavItems = user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : NAV_ITEMS.filter((item) => {
+  const visibleNavItems = user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : user?.role === 'ENTIDAD_BENEFICIARIA' ? ENTIDAD_NAV_ITEMS : NAV_ITEMS.filter((item) => {
     if (item.requiredRole === 'ADMIN') {
       return isAdmin;
     }

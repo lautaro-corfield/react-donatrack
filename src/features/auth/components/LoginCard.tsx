@@ -1,9 +1,10 @@
 import {
+  Button,
   Card,
   Heading,
   Image,
-  Link as ChakraLink,
   Separator,
+  Stack,
   Text,
   VStack,
 } from '@chakra-ui/react';
@@ -47,12 +48,19 @@ export const LoginCard = () => {
         <VStack gap="6" width="100%">
           <LoginForm />
 
-          <Text fontSize="sm" color="gray.600">
-            ¿Todavía no tenés cuenta?{' '}
-            <ChakraLink asChild color="teal.700" fontWeight="semibold">
-              <RouterLink to="/registro/donante">Registrate como donante</RouterLink>
-            </ChakraLink>
-          </Text>
+          <VStack gap="3">
+            <Text fontSize="sm" color="gray.600" whiteSpace="nowrap">
+              ¿No tenés cuenta? Registrate como
+            </Text>
+            <Stack direction="row" justify="center" wrap="wrap" gap="3">
+              <Button asChild variant="outline" colorPalette="teal" borderRadius="xl">
+                <RouterLink to="/registro/donante">Donante</RouterLink>
+              </Button>
+              <Button asChild variant="outline" colorPalette="teal" borderRadius="xl">
+                <RouterLink to="/registro/entidad">Entidad beneficiaria</RouterLink>
+              </Button>
+            </Stack>
+          </VStack>
 
           <Separator />
         </VStack>

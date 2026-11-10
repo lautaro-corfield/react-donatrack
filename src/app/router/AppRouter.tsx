@@ -12,7 +12,9 @@ import { PortalDonante } from '@/features/donantes/views/Portal';
 import { MisDonaciones } from '@/features/donantes/views/Donaciones';
 import { AvisosDonante } from '@/features/donantes/views/Consultas';
 import { MisionesEInsignias } from '@/features/donantes/views/MisionesEInsignias';
-import { EntidadesPage } from '@/pages/EntidadesPage';
+import { DirectorioEntidades } from '@/features/entidades/views/Directorio';
+import { MisNecesidades } from '@/features/entidades/views/MisNecesidades';
+import { RegistroEntidadPublico } from '@/features/entidades/views/RegistroPublico';
 import {
   DonacionesListView,
   DonacionesCreateView,
@@ -26,6 +28,7 @@ import {
 function InicioDashboard() {
   const rol = useAuthStore(state => state.user?.role);
   if (rol === 'DONANTE') return <Navigate to="/dashboard/mi-actividad" replace />;
+  if (rol === 'ENTIDAD_BENEFICIARIA') return <Navigate to="/dashboard/necesidades" replace />;
   if (rol === 'ADMIN' || rol === 'SUPERVISOR') return <Navigate to="/dashboard/donaciones" replace />;
   return <p role="alert">Tu cuenta no tiene un rol habilitado para acceder al panel.</p>;
 }
@@ -48,11 +51,15 @@ export const AppRouter = () => {
           <Route path="/login" element={<LoginPage />} />
         </Route>
         <Route path="/registro/donante" element={<RegistroDonantePublico />} />
+        <Route path="/registro/entidad" element={<RegistroEntidadPublico />} />
 
         {/* Rutas Privadas / Protegidas con DashboardLayout */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<InicioDashboard />} />
+            <Route element={<AccesoDashboard roles={['ENTIDAD_BENEFICIARIA']} />}>
+              <Route path="necesidades" element={<MisNecesidades />} />
+            </Route>
             <Route element={<AccesoDashboard roles={['DONANTE']} />}>
               <Route path="mi-actividad" element={<PortalDonante />} />
               <Route path="mis-donaciones" element={<MisDonaciones />} />
@@ -66,7 +73,7 @@ export const AppRouter = () => {
               <Route path="donantes" element={<GestionDonantes />} />
               <Route path="donantes/nuevo" element={<DonantesCreateView />} />
               <Route path="donantes/importar" element={<DonantesImportarView />} />
-              <Route path="entidades" element={<EntidadesPage />} />
+              <Route path="entidades" element={<DirectorioEntidades />} />
             </Route>
             <Route element={<AccesoDashboard roles={['ADMIN']} />}>
               <Route path="supervisores" element={<SupervisoresListView />} />

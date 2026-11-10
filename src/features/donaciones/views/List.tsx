@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useDonacionesStore } from '../model/donacionesStore';
 import type { Donacion } from '../model/types';
+import { MatchmakingPanel } from '../components/MatchmakingPanel';
 
 const PlusIcon = () => (
   <svg
@@ -142,17 +143,33 @@ export const DonacionesListView = () => {
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                donaciones.map((d) => (
+                donaciones.map((d) => {
+                  const grupos = d.donacionesSegmentadas.reduce<Record<string, typeof d.donacionesSegmentadas>>((acc, segmento) => {
+                    (acc[segmento.subCategoria] ??= []).push(segmento);
+                    return acc;
+                  }, {});
+                  return (
                   <Table.Row key={d.id} _hover={{ bg: 'gray.50' }} transition="all 0.15s">
                     <Table.Cell fontWeight="medium" color="gray.800">
                       {d.descripcion}
                     </Table.Cell>
                     <Table.Cell>
-                      <Stack gap="1" fontSize="sm">
-                        {d.donacionesSegmentadas.map(segmento => (
-                          <Text key={segmento.id}>
-                            {segmento.subCategoria} · {segmento.cantidad.toLocaleString('es-AR')} {segmento.unidad?.toLowerCase()}
-                          </Text>
+                      <Stack gap="3" fontSize="sm">
+                        {Object.entries(grupos).map(([subcategoria, segmentos]) => (
+                          <Stack key={subcategoria} gap="1" borderLeftWidth="2px" borderColor="teal.200" pl="3">
+                            <Text fontWeight="semibold">{subcategoria} · {segmentos.reduce((sum, s) => sum + s.cantidad, 0).toLocaleString('es-AR')} {segmentos[0]?.unidad?.toLowerCase()} agrupados</Text>
+                            {segmentos.map(segmento => (
+                              <Stack key={segmento.id} gap="1">
+                                <Text>Segmento #{segmento.id} · {segmento.cantidad.toLocaleString('es-AR')} {segmento.unidad?.toLowerCase()} · {segmento.estado}</Text>
+                                {segmento.estado === 'EN_DEPOSITO' && (
+                                  <details>
+                                    <Text as="summary" cursor="pointer" color="teal.700" fontWeight="medium">Asignar entidad beneficiaria</Text>
+                                    <MatchmakingPanel segmentoId={segmento.id} onAsignada={() => void fetchDonaciones()} />
+                                  </details>
+                                )}
+                              </Stack>
+                            ))}
+                          </Stack>
                         ))}
                       </Stack>
                     </Table.Cell>
@@ -195,7 +212,8 @@ export const DonacionesListView = () => {
                       </HStack>
                     </Table.Cell>
                   </Table.Row>
-                ))
+                  );
+                })
               )}
             </Table.Body>
           </Table.Root>
