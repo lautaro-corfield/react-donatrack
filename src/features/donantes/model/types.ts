@@ -80,4 +80,6 @@ export interface RegistroDonanteResponse {
 export interface DonanteEncontrado {
   id: number;
   nombre: string;
+  email: string | null;
+  dni: string | null;
 }

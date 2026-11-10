@@ -9,7 +9,8 @@ import { useDonacionesStore } from '../model/donacionesStore';
 import type { CreateDonacionDTO } from '../model/types';
 
 function buscarDonantes(valor: string) {
-  return valor.includes('@') ? donantesApi.buscarPorCorreo(valor) : donantesApi.buscarPorDni(valor);
+  const dni = valor.replace(/[.\s-]/g, '');
+  return /^\d+$/.test(dni) ? donantesApi.buscarPorDni(dni) : donantesApi.buscarPorCorreo(valor);
 }
 export const DonacionesCreateView = () => {
   const navigate = useNavigate();

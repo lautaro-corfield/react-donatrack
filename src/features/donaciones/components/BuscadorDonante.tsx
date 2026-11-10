@@ -9,6 +9,12 @@ export interface BuscadorDonanteProps {
   disabled: boolean;
 }
 
+function datosDeContacto(donante: DonanteEncontrado) {
+  const correo = donante.email?.trim() || 'Sin correo registrado';
+  const dni = donante.dni?.trim();
+  return dni ? `${correo} · DNI ${dni}` : `${correo} · Sin DNI registrado`;
+}
+
 export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: BuscadorDonanteProps) {
   const [valor, setValor] = useState('');
   const [resultados, setResultados] = useState<DonanteEncontrado[] | null>(null);
@@ -22,8 +28,10 @@ export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: Bu
     onSelect(null);
     setResultados(null);
     setError('');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(entrada) && !/^\d{1,8}$/.test(entrada.replace(/[.\s-]/g, ''))) {
-      setError('Ingresá un correo electrónico completo o un DNI válido.');
+    const sinSeparadores = entrada.replace(/[.\s-]/g, '');
+    const longitud = /^\d+$/.test(sinSeparadores) ? sinSeparadores.length : entrada.length;
+    if (longitud < 3 || /\s/.test(entrada) && !/^\d+$/.test(sinSeparadores)) {
+      setError('Ingresá al menos 3 caracteres del correo o 3 dígitos del DNI.');
       return;
     }
 
@@ -44,7 +52,8 @@ export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: Bu
         <Stack direction={{ base: 'column', sm: 'row' }} w="full">
           <Input
             type="search"
-            placeholder="Ej. donante@correo.com o 12.345.678"
+            placeholder="Ej. pangaro o 345"
+            maxLength={254}
             value={valor}
             disabled={disabled || buscando}
             minH="12"
@@ -72,12 +81,14 @@ export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: Bu
 
       <Text role="status" fontSize="sm" color="gray.700">
         {seleccionado
-          ? `Donante seleccionado: ${seleccionado.nombre} (ID ${seleccionado.id})`
+          ? `Donante seleccionado: ${seleccionado.nombre} · ${datosDeContacto(seleccionado)}`
           : resultados?.length === 0
             ? 'No encontramos donantes con ese dato. Revisalo o registrá al donante antes de continuar.'
             : resultados
-              ? 'Seleccioná el donante que hizo la donación.'
-              : 'Buscá por correo o DNI para vincular la donación al perfil correcto.'}
+              ? resultados.length === 20
+                ? 'Mostramos hasta 20 coincidencias. Escribí más caracteres para acotar la búsqueda.'
+                : 'Seleccioná el donante que hizo la donación.'
+              : 'Ingresá parte del correo o DNI y presioná Enter.'}
       </Text>
 
       {resultados && resultados.length > 0 && (
@@ -86,9 +97,12 @@ export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: Bu
             <li key={donante.id}>
               <Button type="button" aria-pressed={seleccionado?.id === donante.id}
                 variant={seleccionado?.id === donante.id ? 'solid' : 'outline'}
-                colorPalette="teal" borderRadius="xl" minH="12" maxW="full" whiteSpace="normal"
+                colorPalette="teal" borderRadius="xl" minH="12" h="auto" py="2" maxW="full" whiteSpace="normal"
                 disabled={disabled} onClick={() => onSelect(donante)}>
-                {donante.nombre} · ID {donante.id}
+                <Stack as="span" gap="0" minW="0" textAlign="start" overflowWrap="anywhere">
+                  <Text as="span" fontWeight="semibold">{donante.nombre}</Text>
+                  <Text as="span" fontSize="sm">{datosDeContacto(donante)}</Text>
+                </Stack>
               </Button>
             </li>
           ))}
