@@ -46,12 +46,6 @@ export interface AvisoDonante {
   fecha: string | null;
 }
 
-export interface EntidadDirectorio {
-  id: number;
-  nombre: string;
-  rubro: string | null;
-}
-
 export interface AltaDonante {
   mediosDeContacto: { medio: string; valor: string }[];
   direccion?: { calle1: string; altura: number; sinAltura: boolean; ciudadNombre: string; provinciaNombre: string; paisNombre: string };

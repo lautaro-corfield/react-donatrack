@@ -10,7 +10,8 @@ import { DonantesImportarView } from '@/features/donantes/views/Importar';
 import { RegistroDonantePublico } from '@/features/donantes/views/RegistroPublico';
 import { PortalDonante } from '@/features/donantes/views/Portal';
 import { MisDonaciones } from '@/features/donantes/views/Donaciones';
-import { AvisosDonante, DirectorioEntidades } from '@/features/donantes/views/Consultas';
+import { AvisosDonante } from '@/features/donantes/views/Consultas';
+import { MisionesEInsignias } from '@/features/donantes/views/MisionesEInsignias';
 import { EntidadesPage } from '@/pages/EntidadesPage';
 import {
   DonacionesListView,
@@ -55,7 +56,7 @@ export const AppRouter = () => {
             <Route element={<AccesoDashboard roles={['DONANTE']} />}>
               <Route path="mi-actividad" element={<PortalDonante />} />
               <Route path="mis-donaciones" element={<MisDonaciones />} />
-              <Route path="directorio" element={<DirectorioEntidades />} />
+              <Route path="misiones-e-insignias" element={<MisionesEInsignias />} />
               <Route path="mis-avisos" element={<AvisosDonante />} />
             </Route>
             <Route element={<AccesoDashboard roles={['ADMIN', 'SUPERVISOR']} />}>

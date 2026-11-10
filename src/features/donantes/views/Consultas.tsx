@@ -1,28 +1,10 @@
-import { Box, Button, Heading, Stack, Text } from '@chakra-ui/react';
+import { Button, Heading, Stack, Text } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { donantesApi } from '../api/donantesApi';
 import { EstadoConsulta } from '../components/EstadoConsulta';
 import { control, panel } from '../components/styles';
 import { useConsulta } from '../model/useConsulta';
-
-export function DirectorioEntidades() {
-  const consulta = useConsulta(donantesApi.entidades);
-  return (
-    <Stack gap="6" maxW="6xl" mx="auto">
-      <PageHeader title="Entidades beneficiarias" subtitle="Conocé a las organizaciones registradas en DonaTrack." />
-      {!consulta.datos ? <EstadoConsulta {...consulta} /> : <>
-        {consulta.datos.length === 0 && <Text>Todavía no hay entidades registradas.</Text>}
-        {consulta.datos.map(entidad => (
-          <Box {...panel} key={entidad.id}>
-            <Heading as="h2" size="md">{entidad.nombre}</Heading>
-            {entidad.rubro && <Text>{entidad.rubro}</Text>}
-          </Box>
-        ))}
-      </>}
-    </Stack>
-  );
-}
 
 export function AvisosDonante() {
   const consulta = useConsulta(donantesApi.avisos);

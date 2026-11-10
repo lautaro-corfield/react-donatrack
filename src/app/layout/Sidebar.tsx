@@ -128,6 +128,22 @@ const HeartHandshakeIcon = () => (
   </svg>
 );
 
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+    <path d="M10 21h4" />
+  </svg>
+);
+
+const MedalIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="5" />
+    <path d="m8 12-2 9 6-3 6 3-2-9" />
+  </svg>
+);
+
 interface NavItem {
   label: string;
   path: string;
@@ -150,8 +166,8 @@ const NAV_ITEMS: NavItem[] = [
 const DONANTE_NAV_ITEMS: NavItem[] = [
   { label: 'Mi actividad', path: '/dashboard/mi-actividad', icon: DonantesIcon },
   { label: 'Mis donaciones', path: '/dashboard/mis-donaciones', icon: DonacionesIcon },
-  { label: 'Entidades beneficiarias', path: '/dashboard/directorio', icon: EntidadesIcon },
-  { label: 'Mis avisos', path: '/dashboard/mis-avisos', icon: HeartHandshakeIcon },
+  { label: 'Misiones e Insignias', path: '/dashboard/misiones-e-insignias', icon: MedalIcon },
+  { label: 'Mis avisos', path: '/dashboard/mis-avisos', icon: BellIcon },
 ];
 
 /**
