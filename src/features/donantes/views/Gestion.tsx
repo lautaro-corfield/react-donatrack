@@ -18,6 +18,13 @@ export function GestionDonantes() {
           </Button>
         </Stack>
         <Stack {...panel} gap="3" align="start">
+          <Heading as="h2" size="md">Consultar donantes</Heading>
+          <Text color="gray.600">Buscá y administrá los donantes registrados.</Text>
+          <Button minH="12" minW="12" borderRadius="xl" variant="outline" onClick={() => navigate('/dashboard/donantes/lista')}>
+            Ver donantes
+          </Button>
+        </Stack>
+        <Stack {...panel} gap="3" align="start">
           <Heading as="h2" size="md">Importar varios donantes</Heading>
           <Text color="gray.600">Registrá o actualizá donantes en lote desde un archivo CSV.</Text>
           <Button minH="12" minW="12" borderRadius="xl" variant="outline" onClick={() => navigate('/dashboard/donantes/importar')}>

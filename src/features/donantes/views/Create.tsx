@@ -1,42 +1,216 @@
-import { Button, Heading, Stack } from '@chakra-ui/react';
 import { useState } from 'react';
+import {
+  Badge,
+  Button,
+  Card,
+  HStack,
+  VStack,
+} from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { toaster } from '@/shared/components/toaster.instance';
-import { donantesApi, errorDonantes } from '../api/donantesApi';
-import { Form } from '../components/Form';
-import { panel } from '../components/styles';
-import type { AltaDonante } from '../model/types';
+import { CsvImportCard } from '../components/CsvImportCard';
+import { DonanteForm } from '../components/DonanteForm';
+import { useDonantesStore } from '../model/donantesStore';
+import type {
+  ContactoValor,
+  CrearPersonaHumanaDTO,
+  CrearPersonaJuridicaDTO,
+  DonanteFormData,
+} from '../model/types';
 
-export function DonantesCreateView() {
+export const DonantesCreateView = () => {
   const navigate = useNavigate();
-  const [guardando, setGuardando] = useState(false);
+  const [activeTab, setActiveTab] = useState<'MANUAL' | 'CSV'>('MANUAL');
+  const [isLoading, setIsLoading] = useState(false);
 
-  async function guardar(tipo: 'humano' | 'juridico', datos: AltaDonante) {
-    setGuardando(true);
+  const createHumano = useDonantesStore((state) => state.createHumano);
+  const createJuridico = useDonantesStore((state) => state.createJuridico);
+
+  const handleManualSubmit = async (formData: DonanteFormData) => {
+    setIsLoading(true);
     try {
-      await donantesApi.alta(tipo, datos);
-      toaster.create({ type: 'success', title: 'Donante registrado', description: 'Ya puede ingresar con Google usando su correo registrado.' });
-      return true;
-    } catch (error) {
-      toaster.create({ type: 'error', title: errorDonantes(error) });
-      return false;
+      const direccion =
+        formData.calle.trim() || formData.altura.trim()
+          ? {
+              calle: formData.calle.trim(),
+              calle1: formData.calle.trim(),
+              altura: Number(formData.altura) || 0,
+              piso: formData.piso ? Number(formData.piso) || 0 : undefined,
+              depto: formData.depto.trim() || undefined,
+              departamento: formData.depto.trim() || undefined,
+            }
+          : undefined;
+
+      const telefonoMedio =
+        formData.medioPreferido === 'WHATSAPP' ? ('WHATSAPP' as const) : ('SMS' as const);
+
+      const mediosDeContacto: ContactoValor[] = [
+        ...(formData.email
+          ? [{ medio: 'EMAIL' as const, valor: formData.email }]
+          : []),
+        ...(formData.telefono
+          ? [{ medio: telefonoMedio, valor: formData.telefono }]
+          : []),
+      ];
+
+      const medioPredeterminado = {
+        medio: formData.medioPreferido,
+        valor:
+          formData.medioPreferido === 'EMAIL'
+            ? formData.email
+            : formData.telefono || formData.email,
+      };
+
+      let result;
+      if (formData.tipoPersona === 'HUMANA') {
+        const dto: CrearPersonaHumanaDTO = {
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          nroDocumento: formData.nroDocumento,
+          genero: formData.genero,
+          fechaNacimiento: formData.fechaNacimiento,
+          direccion,
+          mediosDeContacto,
+          medioPredeterminado,
+        };
+        result = await createHumano(dto);
+      } else {
+        const representantes =
+          formData.representanteNombre && formData.representanteApellido
+            ? [
+                {
+                  nombre: formData.representanteNombre,
+                  apellido: formData.representanteApellido,
+                  nroDocumento: Number(formData.representanteDocumento) || 0,
+                },
+              ]
+            : undefined;
+
+        const dto: CrearPersonaJuridicaDTO = {
+          razonSocial: formData.razonSocial,
+          tipo: formData.tipoOrganizacion,
+          rubro: formData.rubro,
+          representantes,
+          direccion,
+          mediosDeContacto,
+          medioPredeterminado,
+        };
+        result = await createJuridico(dto);
+      }
+
+      if (result?.isUpdated) {
+        toaster.create({
+          title: 'Donante existente actualizado',
+          description:
+            'El correo electrónico ya se encontraba registrado en DonaTrack. Sus datos fueron actualizados conforme a la consigna del sistema.',
+          type: 'info',
+        });
+      } else {
+        toaster.create({
+          title: 'Donante registrado',
+          description: 'El nuevo donante ha sido registrado exitosamente en DonaTrack.',
+          type: 'success',
+        });
+      }
+
+      navigate('/dashboard/donantes/lista');
+    } catch {
+      toaster.create({
+        title: 'Error al registrar',
+        description: 'No se pudo completar el registro del donante.',
+        type: 'error',
+      });
     } finally {
-      setGuardando(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <Stack gap="6" maxW="5xl" mx="auto" w="full">
+    <VStack gap="6" align="stretch" maxW="4xl" mx="auto" py="4">
+      {/* Botón de Retorno con Píldora Suave */}
+      <HStack justify="space-between" align="center">
+        <Button
+          variant="outline"
+          borderRadius="full"
+          size="sm"
+          px="5"
+          onClick={() => navigate('/dashboard/donantes')}
+          _hover={{ transform: 'translateX(-3px)', bg: 'gray.100' }}
+          transition="all 0.2s ease"
+        >
+          ← Volver al Menú de Donantes
+        </Button>
+
+        <Badge colorPalette="teal" variant="subtle" borderRadius="full" px="3" py="1">
+          Paso: Registro
+        </Badge>
+      </HStack>
+
+      {/* Encabezado */}
       <PageHeader
-        title="Registrar nuevo donante"
-        subtitle="Completá los datos en tres pasos. Podés volver a los pasos anteriores para corregir la información."
-        action={<Button minH="12" minW="12" borderRadius="xl" variant="outline" onClick={() => navigate('/dashboard/donantes')}>Volver a donantes</Button>}
+        title="Registrar Nuevo Donante"
+        subtitle="Elige la modalidad de carga que prefieras: formulario manual o importación masiva mediante archivo."
       />
-      <Stack {...panel} gap="5">
-        <Heading as="h2" size="lg">Datos del donante</Heading>
-        <Form guardando={guardando} onSubmit={guardar} />
-      </Stack>
-    </Stack>
+
+      {/* Selector de Modalidad (Píldoras Superiores) */}
+      <HStack
+        p="1.5"
+        bg="gray.100"
+        borderRadius="full"
+        width="fit-content"
+        mx="auto"
+        borderWidth="1px"
+        borderColor="gray.200"
+        shadow="xs"
+      >
+        <Button
+          size="md"
+          borderRadius="full"
+          px="7"
+          variant={activeTab === 'MANUAL' ? 'solid' : 'ghost'}
+          colorPalette={activeTab === 'MANUAL' ? 'teal' : 'gray'}
+          fontWeight={activeTab === 'MANUAL' ? 'bold' : 'medium'}
+          onClick={() => setActiveTab('MANUAL')}
+          transition="all 0.2s ease"
+        >
+          ✍️ Carga Manual
+        </Button>
+
+        <Button
+          size="md"
+          borderRadius="full"
+          px="7"
+          variant={activeTab === 'CSV' ? 'solid' : 'ghost'}
+          colorPalette={activeTab === 'CSV' ? 'teal' : 'gray'}
+          fontWeight={activeTab === 'CSV' ? 'bold' : 'medium'}
+          onClick={() => setActiveTab('CSV')}
+          transition="all 0.2s ease"
+        >
+          📂 Carga por CSV o Excel
+        </Button>
+      </HStack>
+
+      {/* Contenedor del Formulario o Importador */}
+      <Card.Root
+        borderRadius="3xl"
+        borderWidth="1px"
+        borderColor="gray.200"
+        shadow="lg"
+        bg="white"
+        p={{ base: 6, md: 8 }}
+      >
+        {activeTab === 'MANUAL' ? (
+          <DonanteForm
+            onSubmit={handleManualSubmit}
+            onCancel={() => navigate('/dashboard/donantes')}
+            isLoading={isLoading}
+            submitLabel="Completar y Registrar Donante"
+          />
+        ) : (
+          <CsvImportCard />
+        )}
+      </Card.Root>
+    </VStack>
   );
-}
+};

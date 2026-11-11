@@ -19,7 +19,7 @@ export function MisNecesidades() {
     catch { setError('No se pudieron cargar tus necesidades.'); }
     finally { setCargando(false); }
   }, []);
-  useEffect(() => { void cargar(); }, [cargar]);
+  useEffect(() => { void Promise.resolve().then(cargar); }, [cargar]);
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
