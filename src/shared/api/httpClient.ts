@@ -25,6 +25,8 @@ const publicAuthPaths = new Set([
   '/api/auth/social/google/registro-entidad',
   '/api/auth/social/google',
   '/api/auth/social/google/registro-donante',
+  '/api/publico/donaciones/destacadas',
+  '/api/publico/entregas',
 ]);
 
 // Interceptor de Request: inyección transparente del token de sesión

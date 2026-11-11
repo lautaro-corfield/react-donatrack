@@ -12,11 +12,25 @@ const initial: RegistroEntidad = {
 };
 const section = { borderWidth: '1px', borderColor: 'gray.200', borderRadius: '2xl', p: { base: '5', md: '7' }, boxShadow: 'sm' } as const;
 
+/** Convierte "-34,6037" o "-34.6037" a número; vacío o inválido → null. */
+const aNumero = (valor: string): number | null => {
+  const n = parseFloat(valor.trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Vacío es válido (la ubicación es opcional); si hay valor, tiene que estar en rango. */
+const coordenadaValida = (valor: string, limite: number): boolean => {
+  if (!valor.trim()) return true;
+  const n = aNumero(valor);
+  return n !== null && Math.abs(n) <= limite;
+};
+
 export function RegistroEntidadPublico() {
   const [datos, setDatos] = useState(initial);
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [coordenadas, setCoordenadas] = useState({ latitud: '', longitud: '' });
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
@@ -27,7 +41,9 @@ export function RegistroEntidadPublico() {
     setDatos(current => ({ ...current, direccion: { ...current.direccion, [field]: value } }));
 
   function payload(): RegistroEntidad {
-    return { ...datos, mediosDeContacto: [
+    const latitud = aNumero(coordenadas.latitud);
+    const longitud = aNumero(coordenadas.longitud);
+    return { ...datos, direccion: { ...datos.direccion, latitud, longitud }, mediosDeContacto: [
       { medio: 'EMAIL', valor: datos.medioPredeterminado.valor },
       ...(telefono.trim() ? [{ medio: 'SMS' as const, valor: telefono.trim() }] : []),
     ] };
@@ -38,6 +54,10 @@ export function RegistroEntidadPublico() {
       datos.direccion.calle1, datos.direccion.ciudadNombre, datos.direccion.provinciaNombre, datos.direccion.paisNombre];
     if (obligatorios.some(valor => !valor.trim()) || datos.direccion.altura <= 0) {
       setError('Completá los datos de la entidad, el correo institucional y la dirección.');
+      return false;
+    }
+    if (!coordenadaValida(coordenadas.latitud, 90) || !coordenadaValida(coordenadas.longitud, 180)) {
+      setError('Revisá la ubicación: la latitud va de -90 a 90 y la longitud de -180 a 180.');
       return false;
     }
     return true;
@@ -126,6 +146,14 @@ export function RegistroEntidadPublico() {
                   <Field.Root required><Field.Label>Ciudad</Field.Label><Input required minH="12" borderRadius="xl" value={datos.direccion.ciudadNombre} onChange={e => updateDireccion('ciudadNombre', e.target.value)} placeholder="Ciudad" /></Field.Root>
                   <Field.Root required><Field.Label>Provincia</Field.Label><Input required minH="12" borderRadius="xl" value={datos.direccion.provinciaNombre} onChange={e => updateDireccion('provinciaNombre', e.target.value)} placeholder="Provincia" /></Field.Root>
                   <Field.Root required><Field.Label>País</Field.Label><Input required minH="12" borderRadius="xl" value={datos.direccion.paisNombre} onChange={e => updateDireccion('paisNombre', e.target.value)} /></Field.Root>
+                </SimpleGrid>
+                <Text fontSize="sm" color="gray.600" mt="5" mb="3">
+                  Ubicación en el mapa (opcional). Sirve para mostrar tus entregas en el mapa público.
+                  Podés copiarla de Google Maps: clic derecho sobre el lugar y elegí los dos números.
+                </Text>
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+                  <Field.Root><Field.Label>Latitud</Field.Label><Input inputMode="decimal" minH="12" borderRadius="xl" value={coordenadas.latitud} onChange={e => setCoordenadas(c => ({ ...c, latitud: e.target.value }))} placeholder="-34.6037" /></Field.Root>
+                  <Field.Root><Field.Label>Longitud</Field.Label><Input inputMode="decimal" minH="12" borderRadius="xl" value={coordenadas.longitud} onChange={e => setCoordenadas(c => ({ ...c, longitud: e.target.value }))} placeholder="-58.3816" /></Field.Root>
                 </SimpleGrid>
               </Box>
               {error && <Text role="alert" color="red.600">{error}</Text>}
