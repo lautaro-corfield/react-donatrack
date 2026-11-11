@@ -13,6 +13,7 @@ const initial: RegistroEntidad = {
 
 export function RegistroEntidadPublico() {
   const [datos, setDatos] = useState(initial);
+  const [password, setPassword] = useState('');
   const [paso, setPaso] = useState(0);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -49,6 +50,25 @@ export function RegistroEntidadPublico() {
     }
   }
 
+  async function registrarConPassword() {
+    if (!datos.razonSocial || !datos.cuit || !datos.medioPredeterminado.valor || !datos.direccion.calle1 || !datos.direccion.ciudadNombre || !datos.direccion.provinciaNombre || datos.direccion.altura <= 0 || password.length < 15) {
+      setError('Completá los datos de la entidad y una contraseña de al menos 15 caracteres.');
+      return;
+    }
+    setGuardando(true);
+    setError('');
+    try {
+      await entidadesApi.registrarConPassword(datos, password);
+      navigate('/login', { state: { email: datos.medioPredeterminado.valor } });
+    } catch (e) {
+      const data = e && typeof e === 'object' && 'response' in e
+        ? (e as { response?: { data?: unknown } }).response?.data : undefined;
+      setError(typeof data === 'string' ? data : 'No se pudo crear la cuenta. Revisá los datos.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   return (
     <Box minH="100vh" bg="gray.50" py={{ base: '6', md: '10' }} px="4">
       <Container maxW="3xl">
@@ -65,7 +85,7 @@ export function RegistroEntidadPublico() {
           <Card.Root bg="white" borderWidth="1px" borderRadius="2xl">
             <Card.Header>
               <Card.Title><Heading size="lg">Creá la cuenta de tu entidad</Heading></Card.Title>
-              <Card.Description>Usá el mismo correo de Google que cargues como contacto institucional.</Card.Description>
+              <Card.Description>Ingresá el correo institucional y elegí cómo acceder.</Card.Description>
             </Card.Header>
             <Card.Body>
               <Stack gap="4">
@@ -112,7 +132,7 @@ export function RegistroEntidadPublico() {
                 </Field.Root>
                 </>}
                 {paso === 1 && <Field.Root required>
-                  <Field.Label>Correo institucional (Google)</Field.Label>
+                  <Field.Label>Correo institucional</Field.Label>
                   <Input type="email" required value={datos.medioPredeterminado.valor}
                     onChange={e => setDatos(s => ({ ...s, medioPredeterminado: { medio: 'EMAIL', valor: e.target.value },
                       mediosDeContacto: [{ medio: 'EMAIL', valor: e.target.value }] }))} placeholder="contacto@entidad.org" />
@@ -134,7 +154,11 @@ export function RegistroEntidadPublico() {
                   <Button type="button" variant="outline" disabled={paso === 0} onClick={() => setPaso(current => Math.max(0, current - 1))}>Anterior</Button>
                   {paso < 2
                     ? <Button type="submit" colorPalette="teal">Continuar</Button>
-                    : <GoogleLoginButton buttonText="signup_with" onCredential={registrar} />}
+                    : <Stack gap="3" width="100%">
+                        <Input aria-label="Contraseña" type="password" autoComplete="new-password" minLength={15} placeholder="Contraseña de al menos 15 caracteres" value={password} onChange={e => setPassword(e.target.value)} />
+                        <Button type="button" disabled={guardando || password.length < 15} onClick={registrarConPassword}>Registrarme con contraseña</Button>
+                        <GoogleLoginButton buttonText="signup_with" onCredential={registrar} />
+                      </Stack>}
                 </HStack>
                 {guardando && <Text role="status">Creando la cuenta…</Text>}
                 </Stack>

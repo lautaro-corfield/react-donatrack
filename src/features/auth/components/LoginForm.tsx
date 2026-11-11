@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input, Stack, Text } from '@chakra-ui/react';
 import { authService } from '../api/auth.service';
 import { useAuthStore } from '../model/authStore';
+import { useLocation } from 'react-router-dom';
 import { GoogleLoginButton } from './GoogleLoginButton';
 
 /**
@@ -10,7 +11,8 @@ import { GoogleLoginButton } from './GoogleLoginButton';
  * Construido con componentes nativos de Chakra UI v3.
  */
 export const LoginForm = () => {
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -19,6 +19,8 @@ export interface RegistroEntidad {
 }
 
 export const entidadesApi = {
+  registrarConPassword: (datos: RegistroEntidad, password: string) =>
+    httpClient.post('/api/auth/registro/entidad', { datos, password }).then(r => r.data),
   registrarConGoogle: (token: string, datos: RegistroEntidad) =>
     httpClient.post<{ token: string; user: { id: string | number; email: string; role: string; name: string; picture?: string } }>(
       '/api/auth/social/google/registro-entidad', { token, datos }).then(r => r.data),

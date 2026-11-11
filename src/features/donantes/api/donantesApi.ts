@@ -13,6 +13,8 @@ export const donantesApi = {
   misiones: (signal: AbortSignal) => httpClient.get<Mision[]>('/incentivos/misiones', { signal }).then(r => r.data),
   visibilidad: (visible: boolean) => httpClient.put('/donantes/me/insignias', { visible }),
   alta: (tipo: 'humano' | 'juridico', datos: AltaDonante) => httpClient.post(`/donantes/${tipo}`, datos),
+  registrarConPassword: (tipo: 'humano' | 'juridico', datos: AltaDonante, password: string) =>
+    httpClient.post('/api/auth/registro/donante', { tipo, datos, password }).then(r => r.data),
   registrarPublico: (token: string, tipo: 'humano' | 'juridico', datos: AltaDonante) =>
     httpClient.post<RegistroDonanteResponse>('/api/auth/social/google/registro-donante', { token, tipo, datos }).then(r => r.data),
   importar: (archivo: File) => {

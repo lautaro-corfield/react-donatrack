@@ -20,6 +20,9 @@ export const httpClient = axios.create({
 
 const publicAuthPaths = new Set([
   '/api/auth/login',
+  '/api/auth/registro/donante',
+  '/api/auth/registro/entidad',
+  '/api/auth/social/google/registro-entidad',
   '/api/auth/social/google',
   '/api/auth/social/google/registro-donante',
 ]);

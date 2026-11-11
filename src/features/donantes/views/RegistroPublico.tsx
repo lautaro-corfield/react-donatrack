@@ -1,4 +1,4 @@
-import { Box, Button, Card, Container, Heading, HStack, Link as ChakraLink, Stack, Text } from '@chakra-ui/react';
+import { Box, Button, Input, Card, Container, Heading, HStack, Link as ChakraLink, Stack, Text } from '@chakra-ui/react';
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { GoogleLoginButton, useAuthStore } from '@/features/auth';
@@ -9,6 +9,9 @@ import type { AltaDonante } from '../model/types';
 export function RegistroDonantePublico() {
   const navigate = useNavigate();
   const setAuth = useAuthStore(state => state.setAuth);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
   const [datosPendientes, setDatosPendientes] = useState<{ tipo: 'humano' | 'juridico'; datos: AltaDonante } | null>(null);
 
   async function guardarDatos(tipo: 'humano' | 'juridico', datos: AltaDonante) {
@@ -24,6 +27,22 @@ export function RegistroDonantePublico() {
       id: String(sesion.user.id),
     });
     navigate('/dashboard/mi-actividad', { replace: true });
+  }
+
+  async function registrarConPassword() {
+    if (!datosPendientes) return;
+    setGuardando(true);
+    setError('');
+    try {
+      await donantesApi.registrarConPassword(datosPendientes.tipo, datosPendientes.datos, password);
+      navigate('/login', { state: { email: correo } });
+    } catch (e) {
+      const data = e && typeof e === 'object' && 'response' in e
+        ? (e as { response?: { data?: unknown } }).response?.data : undefined;
+      setError(typeof data === 'string' ? data : 'No se pudo crear la cuenta. Revisá los datos.');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   const correo = datosPendientes?.datos.mediosDeContacto.find(contacto => contacto.medio === 'EMAIL')?.valor;
@@ -47,22 +66,25 @@ export function RegistroDonantePublico() {
               <Card.Title>
                 <Heading as="h2" size="lg">Registro de donante</Heading>
               </Card.Title>
-              <Card.Description>Completá tus datos y verificá tu correo con Google. La cuenta se activa al terminar el registro.</Card.Description>
+              <Card.Description>Completá tus datos y elegí cómo ingresar.</Card.Description>
             </Card.Header>
             <Card.Body>
               <Stack gap="6">
                 <Box display={datosPendientes ? 'none' : 'block'}>
-                  <Form guardando={false} onSubmit={guardarDatos} etiquetaFinal="Continuar con Google" />
+                  <Form guardando={false} onSubmit={guardarDatos} etiquetaFinal="Continuar" />
                 </Box>
 
                 {datosPendientes && <Stack gap="4" role="status">
                   <Box borderWidth="1px" borderColor="teal.200" bg="teal.50" borderRadius="xl" p="4">
                     <Heading as="h3" size="sm" mb="1">Tus datos están listos</Heading>
                     <Text fontSize="sm" color="gray.700">
-                      Continuá con Google usando {correo ? <strong>{correo}</strong> : 'el correo indicado'} para verificar que la cuenta sea tuya.
+                      Elegí cómo ingresar con {correo ? <strong>{correo}</strong> : 'el correo indicado'}.
                     </Text>
                   </Box>
+                  <Input aria-label="Contraseña" type="password" autoComplete="new-password" minLength={15} placeholder="Contraseña de al menos 15 caracteres" value={password} onChange={e => setPassword(e.target.value)} />
+                  <Button disabled={guardando || password.length < 15} onClick={registrarConPassword}>Registrarme con contraseña</Button>
                   <GoogleLoginButton onCredential={registrarConGoogle} buttonText="signup_with" />
+                  {error && <Text role="alert" color="red.600">{error}</Text>}
                   <Button minH="12" minW="12" borderRadius="xl" variant="ghost" alignSelf="center" onClick={() => setDatosPendientes(null)}>
                     Editar mis datos
                   </Button>
