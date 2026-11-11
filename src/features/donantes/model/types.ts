@@ -48,6 +48,8 @@ export interface AvisoDonante {
 
 export interface AltaDonante {
   mediosDeContacto: { medio: string; valor: string }[];
+  medioPredeterminado: { medio: TipoNotificador; valor: string };
+  representantes?: { nombre: string; apellido: string; nroDocumento: number }[];
   direccion?: { calle1: string; altura: number; sinAltura: boolean; ciudadNombre: string; provinciaNombre: string; paisNombre: string };
   nombre?: string;
   apellido?: string;
