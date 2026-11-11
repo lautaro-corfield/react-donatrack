@@ -487,7 +487,7 @@ export const DonanteForm = ({
               </VStack>
             </GridItem>
 
-            <GridItem>
+            <GridItem colSpan={{ base: 1, md: 2 }}>
               <VStack align="start" gap="1.5">
                 <Text fontSize="xs" fontWeight="semibold" color="gray.700">
                   Piso
@@ -502,7 +502,7 @@ export const DonanteForm = ({
               </VStack>
             </GridItem>
 
-            <GridItem>
+            <GridItem colSpan={{ base: 1, md: 2 }}>
               <VStack align="start" gap="1.5">
                 <Text fontSize="xs" fontWeight="semibold" color="gray.700">
                   Depto
@@ -511,21 +511,6 @@ export const DonanteForm = ({
                   placeholder="B"
                   value={formData.depto}
                   onChange={(e) => handleChange('depto', e.target.value)}
-                  borderRadius="xl"
-                  size="md"
-                />
-              </VStack>
-            </GridItem>
-
-            <GridItem colSpan={{ base: 1, md: 2 }}>
-              <VStack align="start" gap="1.5">
-                <Text fontSize="xs" fontWeight="semibold" color="gray.700">
-                  Código Postal
-                </Text>
-                <Input
-                  placeholder="C1033"
-                  value={formData.codigoPostal}
-                  onChange={(e) => handleChange('codigoPostal', e.target.value)}
                   borderRadius="xl"
                   size="md"
                 />

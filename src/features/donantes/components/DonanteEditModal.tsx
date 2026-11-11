@@ -63,7 +63,6 @@ export const DonanteEditModal = ({
     altura: getDonanteAltura(donante),
     piso: getDonantePiso(donante),
     depto: getDonanteDepto(donante),
-    codigoPostal: donante.persona.direccion?.codigoPostal || '',
     medioPreferido:
       (donante.persona.medioPredeterminado?.medio as
         | 'EMAIL'

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Badge,
   Box,
+  Button,
   Card,
   Grid,
   GridItem,
@@ -20,6 +21,8 @@ export const DonantesHubView = () => {
   const donantes = useDonantesStore((state) => state.donantes);
   const isLoading = useDonantesStore((state) => state.isLoading);
   const isInitialized = useDonantesStore((state) => state.isInitialized);
+  const isUsingMockData = useDonantesStore((state) => state.isUsingMockData);
+  const error = useDonantesStore((state) => state.error);
   const fetchDonantes = useDonantesStore((state) => state.fetchDonantes);
 
   useEffect(() => {
@@ -28,13 +31,19 @@ export const DonantesHubView = () => {
 
   const isPending = isLoading || !isInitialized;
 
-  const humanasCount = donantes.filter(
-    (d) => d.persona.tipoPersona === 'HUMANA' || !!d.persona.nombre
-  ).length;
-
-  const juridicasCount = donantes.filter(
-    (d) => d.persona.tipoPersona === 'JURIDICA' || !!d.persona.razonSocial
-  ).length;
+  const { humanasCount, juridicasCount } = useMemo(() => {
+    let humanas = 0;
+    let juridicas = 0;
+    for (const d of donantes) {
+      if (d.persona.tipoPersona === 'HUMANA' || !!d.persona.nombre) {
+        humanas++;
+      }
+      if (d.persona.tipoPersona === 'JURIDICA' || !!d.persona.razonSocial) {
+        juridicas++;
+      }
+    }
+    return { humanasCount: humanas, juridicasCount: juridicas };
+  }, [donantes]);
 
   return (
     <VStack gap="8" align="stretch" maxW="5xl" mx="auto" py="4">
@@ -43,18 +52,70 @@ export const DonantesHubView = () => {
         title="Gestión de Donantes"
         subtitle="Administración integral de personas físicas y jurídicas, altas individuales o masivas y consulta del padrón."
         badge={
-          <Badge colorPalette="teal" variant="subtle" px="3" py="1" borderRadius="full">
+          <Badge
+            colorPalette={isUsingMockData || error ? 'orange' : 'teal'}
+            variant="subtle"
+            px="3"
+            py="1"
+            borderRadius="full"
+          >
             {isPending ? (
               <HStack gap="1.5">
                 <Spinner size="xs" colorPalette="teal" />
                 <Text fontSize="xs">Cargando...</Text>
               </HStack>
+            ) : isUsingMockData ? (
+              `⚠️ ${donantes.length} mockup (sin conexión)`
             ) : (
               `${donantes.length} registrados`
             )}
           </Badge>
         }
       />
+
+      {/* Aviso explícito cuando falló la carga del backend o se usan datos mockup */}
+      {!isPending && (error || isUsingMockData) && (
+        <Card.Root
+          borderRadius="2xl"
+          borderWidth="1px"
+          borderColor="orange.300"
+          bg="orange.50"
+          p="4"
+          shadow="xs"
+        >
+          <HStack justify="space-between" align="center" wrap="wrap" gap="3">
+            <HStack gap="3" align="start">
+              <Text fontSize="xl">⚠️</Text>
+              <VStack align="start" gap="0.5">
+                <HStack gap="2">
+                  <Text fontSize="sm" fontWeight="bold" color="orange.900">
+                    No se pudieron traer los donantes desde el servidor
+                  </Text>
+                  {isUsingMockData && (
+                    <Badge colorPalette="orange" variant="solid" borderRadius="full" size="xs">
+                      MODO MOCKUP
+                    </Badge>
+                  )}
+                </HStack>
+                <Text fontSize="xs" color="orange.800">
+                  {error || 'Se están mostrando datos locales de demostración porque el backend no respondió.'}
+                </Text>
+              </VStack>
+            </HStack>
+
+            <Button
+              size="xs"
+              colorPalette="orange"
+              variant="outline"
+              borderRadius="full"
+              loading={isLoading}
+              onClick={() => fetchDonantes(true)}
+            >
+              🔄 Reintentar conexión
+            </Button>
+          </HStack>
+        </Card.Root>
+      )}
 
       {/* Card Principal con las 2 Píldoras Interactivas */}
       <Card.Root

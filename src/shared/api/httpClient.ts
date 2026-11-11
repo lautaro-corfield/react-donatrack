@@ -15,7 +15,7 @@ export const httpClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 120000,
 });
 
 // Interceptor de Request: inyección transparente del token de sesión

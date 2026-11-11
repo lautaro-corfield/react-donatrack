@@ -20,11 +20,12 @@ import { DonanteEditModal } from '../components/DonanteEditModal';
 import { useDonantesStore } from '../model/donantesStore';
 import type { Donante, DonanteFormData } from '../model/types';
 import {
-  getDonanteCalle,
   getDonanteDireccion,
   getDonanteEmail,
   getDonanteTelefono,
 } from '../model/donanteUtils';
+
+const PAGE_SIZE = 50;
 
 export const DonantesListView = () => {
   const navigate = useNavigate();
@@ -35,10 +36,13 @@ export const DonantesListView = () => {
   const deleteDonante = useDonantesStore((state) => state.deleteDonante);
   const isLoading = useDonantesStore((state) => state.isLoading);
   const isInitialized = useDonantesStore((state) => state.isInitialized);
+  const isUsingMockData = useDonantesStore((state) => state.isUsingMockData);
+  const error = useDonantesStore((state) => state.error);
 
   const isPending = isLoading || !isInitialized;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedDonante, setSelectedDonante] = useState<Donante | null>(null);
 
   // Estados para modales
@@ -91,6 +95,14 @@ export const DonantesListView = () => {
       );
     });
   }, [donantes, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDonantes.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedDonantes = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredDonantes.slice(start, start + PAGE_SIZE);
+  }, [filteredDonantes, safePage]);
 
   // Manejador de click en fila
   const handleRowClick = (donante: Donante) => {
@@ -175,18 +187,30 @@ export const DonantesListView = () => {
           ← Volver al Menú de Donantes
         </Button>
 
-        <Button
-          colorPalette="teal"
-          borderRadius="full"
-          size="sm"
-          px="6"
-          shadow="sm"
-          onClick={() => navigate('/dashboard/donantes/nuevo')}
-          _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
-          transition="all 0.2s ease"
-        >
-          ✨ + Registrar Nuevo Donante
-        </Button>
+        <HStack gap="2">
+          <Button
+            variant="outline"
+            borderRadius="full"
+            size="sm"
+            px="4"
+            loading={isLoading}
+            onClick={() => fetchDonantes(true)}
+          >
+            🔄 Actualizar padrón
+          </Button>
+          <Button
+            colorPalette="teal"
+            borderRadius="full"
+            size="sm"
+            px="6"
+            shadow="sm"
+            onClick={() => navigate('/dashboard/donantes/nuevo')}
+            _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+            transition="all 0.2s ease"
+          >
+            ✨ + Registrar Nuevo Donante
+          </Button>
+        </HStack>
       </HStack>
 
       {/* Encabezado */}
@@ -194,18 +218,70 @@ export const DonantesListView = () => {
         title="Lista General de Donantes"
         subtitle="Consulta el padrón unificado de personas físicas y jurídicas. Haz clic sobre cualquier fila para editar o eliminar."
         badge={
-          <Badge colorPalette="teal" variant="subtle" px="3" py="1" borderRadius="full">
+          <Badge
+            colorPalette={isUsingMockData || error ? 'orange' : 'teal'}
+            variant="subtle"
+            px="3"
+            py="1"
+            borderRadius="full"
+          >
             {isPending ? (
               <HStack gap="1.5">
                 <Spinner size="xs" colorPalette="teal" />
                 <Text fontSize="xs">Cargando...</Text>
               </HStack>
+            ) : isUsingMockData ? (
+              `⚠️ ${filteredDonantes.length} de ${donantes.length} (Mockup)`
             ) : (
               `${filteredDonantes.length} de ${donantes.length} donantes`
             )}
           </Badge>
         }
       />
+
+      {/* Aviso explícito cuando falló la conexión con el backend o se muestran datos mockup */}
+      {!isPending && (error || isUsingMockData) && (
+        <Card.Root
+          borderRadius="2xl"
+          borderWidth="1px"
+          borderColor="orange.300"
+          bg="orange.50"
+          p="4"
+          shadow="xs"
+        >
+          <HStack justify="space-between" align="center" wrap="wrap" gap="3">
+            <HStack gap="3" align="start">
+              <Text fontSize="xl">⚠️</Text>
+              <VStack align="start" gap="0.5">
+                <HStack gap="2">
+                  <Text fontSize="sm" fontWeight="bold" color="orange.900">
+                    No se pudieron traer los donantes desde el servidor
+                  </Text>
+                  {isUsingMockData && (
+                    <Badge colorPalette="orange" variant="solid" borderRadius="full" size="xs">
+                      DATOS MOCKUP
+                    </Badge>
+                  )}
+                </HStack>
+                <Text fontSize="xs" color="orange.800">
+                  {error || 'Se están mostrando datos locales de demostración porque el backend no respondió.'}
+                </Text>
+              </VStack>
+            </HStack>
+
+            <Button
+              size="xs"
+              colorPalette="orange"
+              variant="outline"
+              borderRadius="full"
+              loading={isLoading}
+              onClick={() => fetchDonantes(true)}
+            >
+              🔄 Reintentar conexión
+            </Button>
+          </HStack>
+        </Card.Root>
+      )}
 
       {/* Buscador Universal en Tiempo Real */}
       <Card.Root borderRadius="2xl" p="4" borderWidth="1px" borderColor="gray.200" bg="white" shadow="sm">
@@ -216,7 +292,10 @@ export const DonantesListView = () => {
           <Input
             placeholder="Buscar por nombre, apellido, razón social, DNI, organización, email, teléfono o dirección..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             borderRadius="full"
             size="lg"
             bg="gray.50"
@@ -228,7 +307,10 @@ export const DonantesListView = () => {
               variant="ghost"
               size="sm"
               borderRadius="full"
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
             >
               Limpiar
             </Button>
@@ -285,7 +367,7 @@ export const DonantesListView = () => {
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                filteredDonantes.map((donante) => {
+                paginatedDonantes.map((donante) => {
                   const isHumana =
                     donante.persona.tipoPersona === 'HUMANA' ||
                     !!donante.persona.nombre;
@@ -380,6 +462,75 @@ export const DonantesListView = () => {
             </Table.Body>
           </Table.Root>
         </Box>
+
+        {!isPending && filteredDonantes.length > 0 && (
+          <HStack
+            justify="space-between"
+            align="center"
+            px="6"
+            py="4"
+            bg="gray.50"
+            borderTopWidth="1px"
+            borderColor="gray.200"
+            wrap="wrap"
+            gap="3"
+          >
+            <Text fontSize="xs" color="gray.600" fontWeight="medium">
+              Mostrando {(safePage - 1) * PAGE_SIZE + 1}–
+              {Math.min(safePage * PAGE_SIZE, filteredDonantes.length)} de{' '}
+              {filteredDonantes.length} donantes
+            </Text>
+
+            <HStack gap="2">
+              <Button
+                size="xs"
+                variant="outline"
+                borderRadius="full"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage(1)}
+              >
+                « Primera
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                borderRadius="full"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                ‹ Anterior
+              </Button>
+              <Badge
+                colorPalette="teal"
+                variant="subtle"
+                px="3"
+                py="1"
+                borderRadius="full"
+                fontSize="xs"
+              >
+                Página {safePage} de {totalPages}
+              </Badge>
+              <Button
+                size="xs"
+                variant="outline"
+                borderRadius="full"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Siguiente ›
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                borderRadius="full"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                Última »
+              </Button>
+            </HStack>
+          </HStack>
+        )}
       </Card.Root>
 
       {/* Modal 1: Opciones de Fila (Editar / Eliminar) */}

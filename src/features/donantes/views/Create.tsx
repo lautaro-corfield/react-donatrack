@@ -42,7 +42,6 @@ export const DonantesCreateView = () => {
               piso: formData.piso ? Number(formData.piso) || 0 : undefined,
               depto: formData.depto.trim() || undefined,
               departamento: formData.depto.trim() || undefined,
-              codigoPostal: formData.codigoPostal.trim() || undefined,
             }
           : undefined;
 

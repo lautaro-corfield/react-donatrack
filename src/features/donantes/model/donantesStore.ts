@@ -119,9 +119,18 @@ export interface CreateDonanteResult {
   isUpdated: boolean;
 }
 
+export interface CsvImportProgress {
+  currentBatch: number;
+  totalBatches: number;
+  processedRows: number;
+  totalRows: number;
+  stage: string;
+}
+
 interface DonantesState {
   donantes: Donante[];
   isInitialized: boolean;
+  isUsingMockData: boolean;
   selectedDonante: Donante | null;
   searchQuery: string;
   isLoading: boolean;
@@ -129,18 +138,22 @@ interface DonantesState {
 
   setSearchQuery: (query: string) => void;
   setSelectedDonante: (donante: Donante | null) => void;
-  fetchDonantes: () => Promise<void>;
+  fetchDonantes: (force?: boolean) => Promise<void>;
   createHumano: (dto: CrearPersonaHumanaDTO) => Promise<CreateDonanteResult>;
   createJuridico: (dto: CrearPersonaJuridicaDTO) => Promise<CreateDonanteResult>;
   updateDonante: (originalEmail: string, formData: DonanteFormData) => Promise<void>;
   deleteDonante: (email: string) => Promise<void>;
-  importarCSV: (file: File) => Promise<{ success: boolean; count: number; message: string }>;
+  importarCSV: (
+    file: File,
+    onProgress?: (progress: CsvImportProgress) => void
+  ) => Promise<{ success: boolean; count: number; message: string }>;
   clearError: () => void;
 }
 
 export const useDonantesStore = create<DonantesState>((set, get) => ({
   donantes: [],
   isInitialized: false,
+  isUsingMockData: false,
   selectedDonante: null,
   searchQuery: '',
   isLoading: false,
@@ -150,19 +163,47 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
   setSelectedDonante: (selectedDonante: Donante | null) => set({ selectedDonante }),
   clearError: () => set({ error: null }),
 
-  fetchDonantes: async () => {
+  fetchDonantes: async (force = false) => {
+    const state = get();
+    if (state.isLoading) return;
+    if (!force && state.isInitialized && !state.isUsingMockData && !state.error) {
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const data = await donantesApi.getAll();
-      if (Array.isArray(data) && data.length > 0) {
-        set({ donantes: data, isLoading: false, isInitialized: true });
+      if (Array.isArray(data)) {
+        set({
+          donantes: data,
+          isUsingMockData: false,
+          error: null,
+          isLoading: false,
+          isInitialized: true,
+        });
       } else {
-        // Mantiene mocks locales si la base está vacía
-        set({ donantes: INITIAL_MOCK_DONANTES, isLoading: false, isInitialized: true });
+        set({
+          donantes: INITIAL_MOCK_DONANTES,
+          isUsingMockData: true,
+          error: 'El servidor devolvió un formato inesperado. Mostrando datos mockup locales.',
+          isLoading: false,
+          isInitialized: true,
+        });
       }
     } catch {
-      // Fallback a mocks si el microservicio está apagado
-      set({ donantes: INITIAL_MOCK_DONANTES, isLoading: false, isInitialized: true });
+      // Fallback a mocks si el microservicio está apagado o devolvió error, avisando explícitamente
+      set((prev) => {
+        const hasRealData = prev.donantes.length > 0 && !prev.isUsingMockData;
+        return {
+          donantes: hasRealData ? prev.donantes : INITIAL_MOCK_DONANTES,
+          isUsingMockData: !hasRealData,
+          error: hasRealData
+            ? 'No se pudo actualizar el padrón desde el servidor. Mostrando la última copia en memoria.'
+            : 'No se pudo conectar con el servicio de donaciones. Se están mostrando 4 registros mockup de prueba.',
+          isLoading: false,
+          isInitialized: true,
+        };
+      });
     }
   },
 
@@ -485,106 +526,166 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
     }));
   },
 
-  importarCSV: async (file: File) => {
+  importarCSV: async (file: File, onProgress?: (progress: CsvImportProgress) => void) => {
     set({ isLoading: true, error: null });
-    try {
-      const res = await donantesApi.importarCSV(file);
-      if (res.data && res.data.length > 0) {
-        set((state) => ({
-          donantes: [...res.data!, ...state.donantes],
-          isLoading: false,
-        }));
-      } else {
-        await get().fetchDonantes();
+
+    // Si es un archivo .xlsx (binario), se envía directo al backend
+    if (file.name.toLowerCase().endsWith('.xlsx')) {
+      try {
+        onProgress?.({
+          currentBatch: 1,
+          totalBatches: 1,
+          processedRows: 0,
+          totalRows: 1,
+          stage: 'Procesando archivo Excel en el servidor...',
+        });
+        const res = await donantesApi.importarCSV(file);
+        set({ isLoading: false });
+        if (!res.success) {
+          return {
+            success: false,
+            count: 0,
+            message: res.message || 'El servidor reportó un error al importar el archivo.',
+          };
+        }
+        await get().fetchDonantes(true);
+        return {
+          success: true,
+          count: get().donantes.length,
+          message: res.message || 'Donantes importados con éxito.',
+        };
+      } catch {
+        set({ isLoading: false });
+        await get().fetchDonantes(true);
+        return {
+          success: false,
+          count: 0,
+          message: 'Error de conexión o tiempo de espera agotado al subir el archivo.',
+        };
       }
+    }
+
+    // Para CSV: 1) Comprobación y deduplicación local en O(N), 2) Envío por lotes de 2.500 registros
+    const CSV_BATCH_SIZE = 2500;
+    let processedRows = 0;
+    let totalUniqueRows = 0;
+
+    try {
+      const rawText = await file.text();
+      const text = rawText.replace(/^\uFEFF/, ''); // Quitar BOM UTF-8 si existe
+      const allLines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+
+      if (allLines.length === 0) {
+        set({ isLoading: false });
+        return { success: false, count: 0, message: 'El archivo CSV está vacío.' };
+      }
+
+      const hasHeader = allLines[0].toLowerCase().includes('tipopersona');
+      const headerLine = hasHeader
+        ? allLines[0]
+        : 'TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono';
+      const dataLines = hasHeader ? allLines.slice(1) : allLines;
+
+      // Índice O(1) de emails actualmente cargados en el store local
+      const existingEmails = new Set<string>();
+      for (const d of get().donantes) {
+        const em = getDonanteEmail(d).toLowerCase().trim();
+        if (em) existingEmails.add(em);
+      }
+
+      // Deduplicar filas del propio CSV por email (conservando la última aparición)
+      const uniqueByEmail = new Map<string, string>();
+      for (const line of dataLines) {
+        const cols = line.split(',');
+        if (cols.length >= 5) {
+          const email = cols[4].trim().toLowerCase();
+          if (email) {
+            uniqueByEmail.set(email, line);
+          }
+        }
+      }
+
+      // Separar localmente en registros a ACTUALIZAR (email existente) y registros NUEVOS (alta)
+      const linesToUpdate: string[] = [];
+      const linesToInsert: string[] = [];
+
+      for (const [email, line] of uniqueByEmail.entries()) {
+        if (existingEmails.has(email)) {
+          linesToUpdate.push(line);
+        } else {
+          linesToInsert.push(line);
+        }
+      }
+
+      // Primero enviamos las actualizaciones y luego las altas
+      const orderedLines = [...linesToUpdate, ...linesToInsert];
+      totalUniqueRows = orderedLines.length;
+
+      if (totalUniqueRows === 0) {
+        set({ isLoading: false });
+        return {
+          success: false,
+          count: 0,
+          message: 'No se encontraron registros válidos con email en el archivo CSV.',
+        };
+      }
+
+      const totalBatches = Math.ceil(totalUniqueRows / CSV_BATCH_SIZE);
+
+      for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+        const start = batchIdx * CSV_BATCH_SIZE;
+        const chunk = orderedLines.slice(start, start + CSV_BATCH_SIZE);
+
+        onProgress?.({
+          currentBatch: batchIdx + 1,
+          totalBatches,
+          processedRows,
+          totalRows: totalUniqueRows,
+          stage: `Enviando lote ${batchIdx + 1} de ${totalBatches} (${processedRows} / ${totalUniqueRows} registros)...`,
+        });
+
+        const chunkCsvContent = `${headerLine}\n${chunk.join('\n')}\n`;
+        const chunkFile = new File([chunkCsvContent], `lote_${batchIdx + 1}_${file.name}`, {
+          type: 'text/csv;charset=utf-8;',
+        });
+
+        const res = await donantesApi.importarCSV(chunkFile);
+        if (res && res.success === false) {
+          throw new Error(res.message || `Error en el lote ${batchIdx + 1}`);
+        }
+
+        processedRows += chunk.length;
+      }
+
+      onProgress?.({
+        currentBatch: totalBatches,
+        totalBatches,
+        processedRows: totalUniqueRows,
+        totalRows: totalUniqueRows,
+        stage: 'Sincronizando padrón actualizado con el servidor...',
+      });
+
+      set({ isLoading: false });
+      await get().fetchDonantes(true);
+
       return {
         success: true,
-        count: res.data?.length || 0,
-        message: res.message || 'Donantes importados con éxito',
+        count: totalUniqueRows,
+        message: `Se procesaron ${totalUniqueRows} donantes exitosamente (${linesToInsert.length} nuevos dados de alta y ${linesToUpdate.length} actualizados por email).`,
       };
-    } catch {
-      // Fallback: procesar CSV localmente para que funcione aunque el microservicio esté caído
-      return new Promise<{ success: boolean; count: number; message: string }>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const text = e.target?.result as string;
-          if (!text) {
-            set({ isLoading: false });
-            resolve({ success: false, count: 0, message: 'Archivo vacío o ilegible' });
-            return;
-          }
-
-          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-          const currentDonantes = [...get().donantes];
-          let nuevosCount = 0;
-          let actualizadosCount = 0;
-
-          // Saltear encabezado si existe
-          const dataLines = lines[0].toLowerCase().includes('tipopersona')
-            ? lines.slice(1)
-            : lines;
-
-          dataLines.forEach((line, idx) => {
-            const cols = line.split(',').map((c) => c.trim());
-            if (cols.length >= 4) {
-              const tipoPersona = cols[0].toUpperCase().includes('JURID')
-                ? 'JURIDICA'
-                : 'HUMANA';
-              const doc = cols[2] || `DOC-${Date.now()}-${idx}`;
-              const nombreOrRazon = cols[3] || 'Importado';
-              const email = cols[4] || `donante${Date.now()}${idx}@mail.com`;
-              const tel = cols[5] || '';
-
-              const targetEmail = email.toLowerCase().trim();
-              const existingIdx = currentDonantes.findIndex((d) => {
-                const dEmail = getDonanteEmail(d).toLowerCase();
-                return dEmail === targetEmail;
-              });
-
-              const donanteItem: Donante = {
-                id: existingIdx !== -1 ? currentDonantes[existingIdx].id : Date.now() + idx,
-                persona: {
-                  id: existingIdx !== -1 ? currentDonantes[existingIdx].persona.id : Date.now() + 100 + idx,
-                  tipoPersona,
-                  nombre: tipoPersona === 'HUMANA' ? nombreOrRazon : undefined,
-                  razonSocial:
-                    tipoPersona === 'JURIDICA' ? nombreOrRazon : undefined,
-                  nroDocumento: doc,
-                  tipo: tipoPersona === 'JURIDICA' ? 'ONG' : undefined,
-                  medioDeContacto: {
-                    EMAIL: [email],
-                    SMS: tel ? [tel] : [],
-                  },
-                  medioPredeterminado: {
-                    medio: 'EMAIL',
-                    valor: email,
-                  },
-                },
-              };
-
-              if (existingIdx !== -1) {
-                currentDonantes[existingIdx] = donanteItem;
-                actualizadosCount++;
-              } else {
-                currentDonantes.unshift(donanteItem);
-                nuevosCount++;
-              }
-            }
-          });
-
-          set({
-            donantes: currentDonantes,
-            isLoading: false,
-          });
-
-          resolve({
-            success: true,
-            count: nuevosCount + actualizadosCount,
-            message: `Procesados ${nuevosCount + actualizadosCount} donantes (${nuevosCount} creados, ${actualizadosCount} actualizados por correo registrado).`,
-          });
-        };
-        reader.readAsText(file);
-      });
+    } catch (err) {
+      set({ isLoading: false });
+      // Sincronizamos el estado real desde el servidor para no mostrar datos falsos en memoria
+      await get().fetchDonantes(true);
+      const errorMsg = err instanceof Error ? err.message : 'Error de red o tiempo de espera agotado';
+      return {
+        success: false,
+        count: processedRows,
+        message:
+          processedRows > 0
+            ? `La carga se interrumpió tras confirmar ${processedRows} de ${totalUniqueRows} registros (${errorMsg}). El padrón muestra únicamente los registros efectivamente guardados en la base.`
+            : `No se pudo completar la importación en el servidor (${errorMsg}).`,
+      };
     }
   },
 }));
