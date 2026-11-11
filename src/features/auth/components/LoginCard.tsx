@@ -69,9 +69,7 @@ export const LoginCard = ({ staff = false }: { staff?: boolean }) => {
         )}
       </Card.Body>
 
-      <Card.Footer justifyContent="center" pb="6">
-        {staff ? <RouterLink to="/login">Ingreso de donantes y entidades</RouterLink> : <RouterLink to="/login/personal">Acceso de administración y supervisión</RouterLink>}
-      </Card.Footer>
+
     </Card.Root>
   );
 };

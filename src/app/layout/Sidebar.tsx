@@ -200,7 +200,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
   };
 
   const handleLogout = () => {
-    const loginPath = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR' ? '/login/personal' : '/login';
+    const loginPath = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR' ? '/login/admin' : '/login';
     logout();
     navigate(loginPath);
     onNavigate?.();

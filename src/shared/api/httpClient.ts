@@ -52,7 +52,7 @@ httpClient.interceptors.response.use(
 
       // 2. Redirección segura a la vista de login para evitar bucles de navegación
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.replace(role === 'ADMIN' || role === 'SUPERVISOR' ? '/login/personal' : '/login');
+        window.location.replace(role === 'ADMIN' || role === 'SUPERVISOR' ? '/login/admin' : '/login');
       }
     }
     return Promise.reject(error);
