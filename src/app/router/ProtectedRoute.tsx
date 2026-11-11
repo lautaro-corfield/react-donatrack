@@ -11,7 +11,8 @@ export const ProtectedRoute = () => {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    const staffRoute = /^\/dashboard\/(donaciones|donantes|entidades|supervisores)(\/|$)/.test(location.pathname);
+    return <Navigate to={staffRoute ? '/login/personal' : '/login'} replace state={{ from: location }} />;
   }
 
   return <Outlet />;

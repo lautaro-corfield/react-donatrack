@@ -10,7 +10,7 @@ import { GoogleLoginButton } from './GoogleLoginButton';
  * Soporta autenticación tradicional (email y password) y SSO con Google (Token Swap).
  * Construido con componentes nativos de Chakra UI v3.
  */
-export const LoginForm = () => {
+export const LoginForm = ({ allowedRoles }: { allowedRoles: string[] }) => {
   const location = useLocation();
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [password, setPassword] = useState('');
@@ -19,6 +19,18 @@ export const LoginForm = () => {
 
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuthError = useAuthStore((state) => state.clearError);
+
+  const acceptSession = (token: string, user: { id: string; email: string; name: string; role?: string; picture?: string }) => {
+    if (!user.role || !allowedRoles.includes(user.role)) {
+      throw new Error('Esta cuenta corresponde a otro tipo de ingreso.');
+    }
+    setAuth(token, user);
+  };
+
+  const handleGoogle = async (idToken: string) => {
+    const response = await authService.swapGoogleToken(idToken);
+    acceptSession(response.token, response.user);
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,7 +43,7 @@ export const LoginForm = () => {
         email,
         password,
       });
-      setAuth(response.token, response.user);
+      acceptSession(response.token, response.user);
     } catch (err: unknown) {
       const errorMessage =
         err && typeof err === 'object' && 'response' in err
@@ -97,7 +109,7 @@ export const LoginForm = () => {
         <Text fontSize="xs" color="gray.500" textTransform="uppercase" fontWeight="bold">
           o continúa con
         </Text>
-        <GoogleLoginButton />
+        <GoogleLoginButton onCredential={handleGoogle} />
       </Stack>
     </Stack>
   );

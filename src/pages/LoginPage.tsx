@@ -5,12 +5,12 @@ import { LoginCard } from '@/features/auth';
  * Página de inicio de sesión de DonaTrack.
  * Renderiza el formulario unificado (email/password y Google SSO Token Swap).
  */
-export const LoginPage = () => {
+export const LoginPage = ({ staff = false }: { staff?: boolean }) => {
   return (
     <Box minH="100vh" bg="gray.50" py={{ base: '6', md: '12' }} px="4">
       <Container maxW="md">
         <Flex justify="center" align="center" minH="80vh">
-          <LoginCard />
+          <LoginCard staff={staff} />
         </Flex>
       </Container>
     </Box>

@@ -47,11 +47,12 @@ httpClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response?.status === 401 && !publicAuthPaths.has(error.config?.url ?? '')) {
       // 1. Limpieza imperativa del estado de autenticación en Zustand
+      const role = useAuthStore.getState().user?.role;
       useAuthStore.getState().logout();
 
       // 2. Redirección segura a la vista de login para evitar bucles de navegación
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.replace('/login');
+        window.location.replace(role === 'ADMIN' || role === 'SUPERVISOR' ? '/login/personal' : '/login');
       }
     }
     return Promise.reject(error);

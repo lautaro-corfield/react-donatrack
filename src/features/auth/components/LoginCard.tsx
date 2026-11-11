@@ -1,21 +1,26 @@
-import {
-  Button,
-  Card,
-  Heading,
-  Image,
-  Separator,
-  Stack,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
-import { Link as RouterLink } from 'react-router-dom';
+import { useState } from 'react';
+import { Card, Heading, Image, Stack, Tabs, Text, VStack } from '@chakra-ui/react';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { LoginForm } from './LoginForm';
 
-/**
- * Tarjeta principal de autenticación construida íntegramente con Chakra UI v3.
- * Contiene el formulario unificado de credenciales (email/password) y SSO con Google.
- */
-export const LoginCard = () => {
+type PublicRole = 'DONANTE' | 'ENTIDAD_BENEFICIARIA';
+
+function RoleIcon({ role }: { role: PublicRole }) {
+  return role === 'DONANTE' ? (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+    </svg>
+  ) : (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M3 21h18M9 21v-5h6v5M8 7h2m4 0h2M8 11h2m4 0h2" />
+    </svg>
+  );
+}
+
+export const LoginCard = ({ staff = false }: { staff?: boolean }) => {
+  const location = useLocation();
+  const initialRole = (location.state as { role?: string } | null)?.role;
+  const [role, setRole] = useState<PublicRole>(initialRole === 'ENTIDAD_BENEFICIARIA' ? initialRole : 'DONANTE');
   return (
     <Card.Root
       maxW="md"
@@ -39,37 +44,33 @@ export const LoginCard = () => {
             DonaTrack
           </Heading>
           <Card.Title fontSize="lg" fontWeight="semibold" color="gray.700">
-            Iniciar Sesión
+            {staff ? 'Ingreso del equipo' : 'Iniciar sesión'}
           </Card.Title>
         </VStack>
       </Card.Header>
 
       <Card.Body py="6">
-        <VStack gap="6" width="100%">
-          <LoginForm />
-
-          <VStack gap="3">
-            <Text fontSize="sm" color="gray.600" whiteSpace="nowrap">
-              ¿No tenés cuenta? Registrate como
-            </Text>
-            <Stack direction="row" justify="center" wrap="wrap" gap="3">
-              <Button asChild variant="outline" colorPalette="teal" borderRadius="xl">
-                <RouterLink to="/registro/donante">Donante</RouterLink>
-              </Button>
-              <Button asChild variant="outline" colorPalette="teal" borderRadius="xl">
-                <RouterLink to="/registro/entidad">Entidad beneficiaria</RouterLink>
-              </Button>
+        {staff ? <LoginForm allowedRoles={['ADMIN', 'SUPERVISOR']} /> : (
+          <Tabs.Root value={role} onValueChange={({ value }) => setRole(value as PublicRole)} fitted variant="plain" colorPalette="teal" w="100%">
+            <Tabs.List bg="gray.100" borderWidth="1px" borderColor="gray.200" borderRadius="full" p="1" mb="6" w="100%">
+              <Tabs.Trigger value="DONANTE" borderRadius="full" justifyContent="center" gap="2" _selected={{ bg: 'teal.600', color: 'white', shadow: 'sm' }}>
+                <RoleIcon role="DONANTE" /> Donantes
+              </Tabs.Trigger>
+              <Tabs.Trigger value="ENTIDAD_BENEFICIARIA" borderRadius="full" justifyContent="center" gap="2" _selected={{ bg: 'teal.600', color: 'white', shadow: 'sm' }}>
+                <RoleIcon role="ENTIDAD_BENEFICIARIA" /> Entidades
+              </Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content value="DONANTE"><LoginForm allowedRoles={['DONANTE']} /></Tabs.Content>
+            <Tabs.Content value="ENTIDAD_BENEFICIARIA"><LoginForm allowedRoles={['ENTIDAD_BENEFICIARIA']} /></Tabs.Content>
+            <Stack align="center" mt="6">
+              <Text fontSize="sm" color="gray.600">¿No tenés cuenta? <RouterLink to={role === 'DONANTE' ? '/registro/donante' : '/registro/entidad'} style={{ color: 'var(--chakra-colors-teal-700)', fontWeight: 700 }}>Registrate</RouterLink></Text>
             </Stack>
-          </VStack>
-
-          <Separator />
-        </VStack>
+          </Tabs.Root>
+        )}
       </Card.Body>
 
       <Card.Footer justifyContent="center" pb="6">
-        <Text fontSize="xs" color="gray.400">
-          © {new Date().getFullYear()} DonaTrack
-        </Text>
+        {staff ? <RouterLink to="/login">Ingreso de donantes y entidades</RouterLink> : <RouterLink to="/login/personal">Acceso de administración y supervisión</RouterLink>}
       </Card.Footer>
     </Card.Root>
   );

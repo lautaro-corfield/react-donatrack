@@ -1,160 +1,99 @@
-import { Button, Field, Heading, Input, NativeSelect, SimpleGrid, Stack, Steps, Text } from '@chakra-ui/react';
-import { useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
+import { Box, Button, Field, Heading, Input, NativeSelect, SimpleGrid, Stack, Tabs, Text } from '@chakra-ui/react';
+import { useState, type FormEvent } from 'react';
 import type { AltaDonante } from '../model/types';
-import { control } from './styles';
 
 type TipoDonante = 'humano' | 'juridico';
-type CampoNombre = 'nombre' | 'apellido' | 'documento' | 'edad' | 'genero' | 'rubro' | 'organizacion' | 'email' | 'telefono' | 'calle' | 'altura' | 'ciudad' | 'provincia' | 'pais';
-type DatosFormulario = Partial<Record<CampoNombre, string>>;
+type Campo = 'nombre' | 'apellido' | 'documento' | 'edad' | 'genero' | 'rubro' | 'organizacion' | 'email' | 'telefono' | 'calle' | 'altura' | 'ciudad' | 'provincia' | 'pais';
+type Datos = Partial<Record<Campo, string>>;
 
-function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return <Field.Root><Field.Label>{etiqueta}</Field.Label>{children}</Field.Root>;
-}
+const section = { borderWidth: '1px', borderColor: 'gray.200', borderRadius: '2xl', p: { base: '5', md: '7' }, boxShadow: 'sm' } as const;
 
-const pasos = ['Datos personales', 'Medios de contacto', 'Dirección'];
-
-export function Form({ guardando, onSubmit, etiquetaFinal = 'Registrar donante' }: {
+export function Form({ guardando, onSubmit }: {
   guardando: boolean;
-  onSubmit: (tipo: TipoDonante, datos: AltaDonante) => Promise<boolean>;
-  etiquetaFinal?: string;
+  onSubmit: (tipo: TipoDonante, datos: AltaDonante, password: string) => Promise<boolean>;
 }) {
   const [tipo, setTipo] = useState<TipoDonante>('humano');
-  const [paso, setPaso] = useState(0);
-  const [datos, setDatos] = useState<DatosFormulario>({});
+  const [datos, setDatos] = useState<Datos>({});
+  const [password, setPassword] = useState('');
+  const [confirmacion, setConfirmacion] = useState('');
+  const [error, setError] = useState('');
 
-  function guardarPaso(form: HTMLFormElement) {
-    const valores = Object.fromEntries(new FormData(form).entries());
-    const nuevosDatos = Object.fromEntries(Object.entries(valores).map(([clave, valor]) => [clave, String(valor).trim()]));
-    setDatos(actuales => ({ ...actuales, ...nuevosDatos }));
-    return { ...datos, ...nuevosDatos } as DatosFormulario;
+  function campo(nombre: Campo, etiqueta: string, placeholder: string, props: React.ComponentProps<typeof Input> = {}) {
+    return <Field.Root required={props.required}>
+      <Field.Label>{etiqueta}{props.required && <Text as="span" color="red.500"> *</Text>}</Field.Label>
+      <Input minH="12" borderRadius="xl" name={nombre} value={datos[nombre] ?? ''} onChange={e => setDatos(actual => ({ ...actual, [nombre]: e.target.value }))} placeholder={placeholder} {...props} />
+    </Field.Root>;
   }
 
-  async function enviar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const form = evento.currentTarget;
-    if (paso < pasos.length - 1) {
-      if (form.reportValidity()) {
-        guardarPaso(form);
-        setPaso(actual => actual + 1);
-      }
+  async function enviar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    if (password && (password.length < 8 || password !== confirmacion)) {
+      setError('La contraseña debe tener al menos 8 caracteres y coincidir con la confirmación.');
       return;
     }
-
-    const valores = guardarPaso(form);
-    const mediosDeContacto = [{ medio: 'EMAIL', valor: valores.email ?? '' }];
-    if (valores.telefono) mediosDeContacto.push({ medio: 'SMS', valor: valores.telefono });
-    const direccion = valores.calle ? {
-      calle1: valores.calle,
-      altura: Number(valores.altura),
-      sinAltura: !valores.altura,
-      ciudadNombre: valores.ciudad ?? '',
-      provinciaNombre: valores.provincia ?? '',
-      paisNombre: valores.pais ?? '',
+    const mediosDeContacto = [{ medio: 'EMAIL', valor: datos.email?.trim() ?? '' }];
+    if (datos.telefono) mediosDeContacto.push({ medio: 'SMS', valor: datos.telefono.trim() });
+    const direccion = datos.calle ? {
+      calle1: datos.calle.trim(), altura: Number(datos.altura), sinAltura: !datos.altura,
+      ciudadNombre: datos.ciudad?.trim() ?? '', provinciaNombre: datos.provincia?.trim() ?? '', paisNombre: datos.pais?.trim() ?? '',
     } : undefined;
     const identificacion = tipo === 'humano'
-      ? {
-          nombre: valores.nombre ?? '',
-          apellido: valores.apellido ?? '',
-          nroDocumento: valores.documento ?? '',
-          edad: Number(valores.edad),
-          genero: valores.genero ?? '',
-        }
-      : {
-          razonSocial: valores.nombre ?? '',
-          cuit: valores.documento ?? '',
-          rubro: valores.rubro ?? '',
-          tipo: valores.organizacion ?? 'EMPRESA',
-        };
-
-    if (await onSubmit(tipo, { ...identificacion, mediosDeContacto, direccion })) {
-      setDatos({});
-      setPaso(0);
-      setTipo('humano');
+      ? { nombre: datos.nombre?.trim() ?? '', apellido: datos.apellido?.trim() ?? '', nroDocumento: datos.documento?.trim() ?? '', edad: Number(datos.edad), genero: datos.genero?.trim() ?? '' }
+      : { razonSocial: datos.nombre?.trim() ?? '', cuit: datos.documento?.trim() ?? '', rubro: datos.rubro?.trim() ?? '', tipo: datos.organizacion ?? 'EMPRESA' };
+    if (await onSubmit(tipo, { ...identificacion, mediosDeContacto, direccion }, password)) {
+      setDatos({}); setPassword(''); setConfirmacion(''); setTipo('humano');
     }
   }
 
-  function campo(nombre: CampoNombre, placeholder: string, props: ComponentProps<typeof Input> = {}) {
-    return <Input {...control} name={nombre} placeholder={placeholder} value={datos[nombre] ?? ''} onChange={evento => setDatos(actuales => ({ ...actuales, [nombre]: evento.target.value }))} {...props} />;
-  }
+  return <form onSubmit={enviar}>
+    <Stack gap="7">
+      <Box {...section}>
+        <Heading as="h3" size="md" color="teal.800" mb="5">1. Tu cuenta</Heading>
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+          {campo('email', 'Correo electrónico', 'donante@ejemplo.com', { type: 'email', required: true, autoComplete: 'email' })}
+          <Box />
+          <Field.Root><Field.Label>Contraseña</Field.Label><Input minH="12" borderRadius="xl" type="password" minLength={8} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Al menos 8 caracteres" /></Field.Root>
+          <Field.Root><Field.Label>Confirmar contraseña</Field.Label><Input minH="12" borderRadius="xl" type="password" autoComplete="new-password" value={confirmacion} onChange={e => setConfirmacion(e.target.value)} placeholder="Repetí tu contraseña" /></Field.Root>
+        </SimpleGrid>
+        <Text color="gray.500" fontSize="sm" mt="3">Para registrarte con Google podés dejar la contraseña vacía.</Text>
+      </Box>
 
-  return (
-    <form onSubmit={enviar}>
-      <Stack gap="6">
-        <Steps.Root count={pasos.length} step={paso} onStepChange={({ step }) => setPaso(step)} linear colorPalette="teal" size="sm">
-          <Steps.List>
-            {pasos.map((nombre, indice) => (
-              <Steps.Item key={nombre} index={indice}>
-                <Steps.Trigger disabled={indice > paso}>
-                  <Steps.Indicator />
-                  <Steps.Title>{nombre}</Steps.Title>
-                </Steps.Trigger>
-                {indice < pasos.length - 1 && <Steps.Separator />}
-              </Steps.Item>
-            ))}
-          </Steps.List>
-        </Steps.Root>
-        <Text fontWeight="semibold" color="gray.700">Paso {paso + 1} de {pasos.length}: {pasos[paso]}</Text>
+      <Box {...section}>
+        <Heading as="h3" size="md" color="teal.800" mb="5">2. Datos de identidad</Heading>
+        <Tabs.Root value={tipo} onValueChange={({ value }) => { setTipo(value as TipoDonante); setDatos(actual => ({ email: actual.email, telefono: actual.telefono, calle: actual.calle, altura: actual.altura, ciudad: actual.ciudad, provincia: actual.provincia, pais: actual.pais })); }} variant="plain" mb="5">
+          <Tabs.List bg="gray.100" borderWidth="1px" borderColor="gray.200" borderRadius="full" p="1">
+            <Tabs.Trigger value="humano" borderRadius="full" _selected={{ bg: 'teal.600', color: 'white' }}>Persona física</Tabs.Trigger>
+            <Tabs.Trigger value="juridico" borderRadius="full" _selected={{ bg: 'teal.600', color: 'white' }}>Persona jurídica</Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+          {campo('nombre', tipo === 'humano' ? 'Nombre' : 'Razón social', tipo === 'humano' ? 'Ej. María' : 'Ej. Fundación Esperanza', { required: true })}
+          {tipo === 'humano' && campo('apellido', 'Apellido', 'Ej. Pérez', { required: true })}
+          {campo('documento', tipo === 'humano' ? 'DNI / Documento' : 'CUIT', 'Ej. 30123456', { required: true })}
+          {tipo === 'humano' ? <>
+            {campo('edad', 'Edad', 'Ej. 35', { type: 'number', min: '1', max: '120', required: true })}
+            {campo('genero', 'Género', 'Prefiero no decir')}
+          </> : <>
+            {campo('rubro', 'Rubro', 'Ej. Alimentación', { required: true })}
+            <Field.Root><Field.Label>Tipo de organización</Field.Label><NativeSelect.Root><NativeSelect.Field minH="12" borderRadius="xl" value={datos.organizacion ?? 'EMPRESA'} onChange={e => setDatos(actual => ({ ...actual, organizacion: e.target.value }))}><option value="EMPRESA">Empresa</option><option value="ONG">ONG</option><option value="GUBERNAMENTAL">Gubernamental</option><option value="INSTITUCION">Institución</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+          </>}
+        </SimpleGrid>
+      </Box>
 
-        {paso === 0 && <Stack gap="4">
-          <Campo etiqueta="Tipo de donante">
-            <NativeSelect.Root>
-              <NativeSelect.Field {...control} value={tipo} onChange={evento => { setTipo(evento.target.value === 'juridico' ? 'juridico' : 'humano'); setDatos({}); }}>
-                <option value="humano">Persona humana</option>
-                <option value="juridico">Persona jurídica</option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
-          </Campo>
-          <Heading as="h2" size="md">{tipo === 'humano' ? 'Datos personales' : 'Datos de la organización'}</Heading>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
-            <Campo etiqueta={tipo === 'humano' ? 'Nombre' : 'Razón social'}>{campo('nombre', tipo === 'humano' ? 'Ej. María' : 'Ej. Fundación Esperanza', { required: true })}</Campo>
-            {tipo === 'humano' && <Campo etiqueta="Apellido">{campo('apellido', 'Ej. Pérez', { required: true })}</Campo>}
-            <Campo etiqueta={tipo === 'humano' ? 'DNI' : 'CUIT'}>{campo('documento', tipo === 'humano' ? 'Ej. 30123456' : 'Ej. 30-12345678-9', { required: true, inputMode: 'numeric' })}</Campo>
-            {tipo === 'humano' ? <>
-              <Campo etiqueta="Edad">{campo('edad', 'Ej. 35', { type: 'number', min: '1', max: '120', required: true })}</Campo>
-              <Campo etiqueta="Género">{campo('genero', 'Seleccioná o escribí una opción')}</Campo>
-            </> : <>
-              <Campo etiqueta="Rubro">{campo('rubro', 'Ej. Alimentación', { required: true })}</Campo>
-              <Campo etiqueta="Tipo de organización">
-                <NativeSelect.Root>
-                  <NativeSelect.Field {...control} name="organizacion" value={datos.organizacion ?? 'EMPRESA'} onChange={evento => setDatos(actuales => ({ ...actuales, organizacion: evento.target.value }))}>
-                    <option value="EMPRESA">Empresa</option><option value="ONG">ONG</option>
-                    <option value="GUBERNAMENTAL">Gubernamental</option><option value="INSTITUCION">Institución</option>
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Campo>
-            </>}
-          </SimpleGrid>
-        </Stack>}
-
-        {paso === 1 && <Stack gap="4">
-          <Heading as="h2" size="md">Medios de contacto</Heading>
-          <Text color="gray.600">El correo debe ser una cuenta de Google para que la persona pueda iniciar sesión.</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
-            <Campo etiqueta="Correo de Google">{campo('email', 'nombre@gmail.com', { type: 'email', required: true, autoComplete: 'email' })}</Campo>
-            <Campo etiqueta="Teléfono (opcional)">{campo('telefono', 'Ej. +54 11 1234-5678', { type: 'tel', autoComplete: 'tel' })}</Campo>
-          </SimpleGrid>
-        </Stack>}
-
-        {paso === 2 && <Stack gap="4">
-          <Heading as="h2" size="md">Dirección</Heading>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
-            <Campo etiqueta="Calle">{campo('calle', 'Ej. Av. Corrientes', { required: tipo === 'humano', autoComplete: 'address-line1' })}</Campo>
-            <Campo etiqueta="Altura (opcional)">{campo('altura', 'Ej. 1234', { type: 'number', min: '1' })}</Campo>
-            <Campo etiqueta="Provincia">{campo('provincia', 'Ej. Buenos Aires', { required: tipo === 'humano', autoComplete: 'address-level1' })}</Campo>
-            <Campo etiqueta="País">{campo('pais', 'Ej. Argentina', { autoComplete: 'country-name' })}</Campo>
-            <Campo etiqueta="Ciudad">{campo('ciudad', 'Ej. CABA', { required: tipo === 'humano', autoComplete: 'address-level2' })}</Campo>
-          </SimpleGrid>
-        </Stack>}
-
-        <Stack direction="row" justify="space-between" flexWrap="wrap" gap="3">
-          <Button {...control} type="button" variant="outline" onClick={() => setPaso(actual => Math.max(0, actual - 1))} disabled={paso === 0}>Anterior</Button>
-          <Button {...control} type="submit" loading={guardando} colorPalette="teal">
-            {paso === pasos.length - 1 ? etiquetaFinal : 'Continuar'}
-          </Button>
-        </Stack>
-      </Stack>
-    </form>
-  );
+      <Box {...section}>
+        <Heading as="h3" size="md" color="teal.800" mb="5">3. Contacto y domicilio</Heading>
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+          {campo('telefono', 'Teléfono / Móvil', 'Ej. +54 11 4455-6677', { type: 'tel' })}
+          {campo('calle', 'Calle', 'Ej. Av. Corrientes', { required: tipo === 'humano' })}
+          {campo('altura', 'Altura', 'Ej. 1234', { type: 'number', min: '1' })}
+          {campo('ciudad', 'Ciudad', 'Ej. CABA', { required: tipo === 'humano' })}
+          {campo('provincia', 'Provincia', 'Ej. Buenos Aires', { required: tipo === 'humano' })}
+          {campo('pais', 'País', 'Ej. Argentina')}
+        </SimpleGrid>
+      </Box>
+      {error && <Text role="alert" color="red.600">{error}</Text>}
+      <Button type="submit" colorPalette="teal" borderRadius="full" minH="12" loading={guardando} alignSelf="end">Continuar</Button>
+    </Stack>
+  </form>;
 }

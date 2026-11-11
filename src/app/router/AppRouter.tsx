@@ -50,6 +50,7 @@ export const AppRouter = () => {
         {/* Rutas Públicas (exclusivas para usuarios sin autenticar) */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/login/personal" element={<LoginPage staff />} />
         </Route>
         <Route path="/registro/donante" element={<RegistroDonantePublico />} />
         <Route path="/registro/entidad" element={<RegistroEntidadPublico />} />
