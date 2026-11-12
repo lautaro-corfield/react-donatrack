@@ -31,6 +31,10 @@ export function RegistroEntidadPublico() {
   const [confirmacion, setConfirmacion] = useState('');
   const [telefono, setTelefono] = useState('');
   const [coordenadas, setCoordenadas] = useState({ latitud: '', longitud: '' });
+  const [representantes, setRepresentantes] = useState([{ nombre: '', apellido: '', nroDocumento: '', email: '' }]);
+  type CampoRepresentante = 'nombre' | 'apellido' | 'nroDocumento' | 'email';
+  const updateRepresentante = (i: number, campo: CampoRepresentante, valor: string) =>
+    setRepresentantes(lista => lista.map((r, j) => (j === i ? { ...r, [campo]: valor } : r)));
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
@@ -43,7 +47,10 @@ export function RegistroEntidadPublico() {
   function payload(): RegistroEntidad {
     const latitud = aNumero(coordenadas.latitud);
     const longitud = aNumero(coordenadas.longitud);
-    return { ...datos, direccion: { ...datos.direccion, latitud, longitud }, mediosDeContacto: [
+    const cargados = representantes
+      .filter(r => r.nombre.trim() || r.apellido.trim() || r.email.trim())
+      .map(r => ({ nombre: r.nombre.trim(), apellido: r.apellido.trim(), nroDocumento: Number(r.nroDocumento) || 0, email: r.email.trim() }));
+    return { ...datos, representantes: cargados, direccion: { ...datos.direccion, latitud, longitud }, mediosDeContacto: [
       { medio: 'EMAIL', valor: datos.medioPredeterminado.valor },
       ...(telefono.trim() ? [{ medio: 'SMS' as const, valor: telefono.trim() }] : []),
     ] };
@@ -54,6 +61,12 @@ export function RegistroEntidadPublico() {
       datos.direccion.calle1, datos.direccion.ciudadNombre, datos.direccion.provinciaNombre, datos.direccion.paisNombre];
     if (obligatorios.some(valor => !valor.trim()) || datos.direccion.altura <= 0) {
       setError('Completá los datos de la entidad, el correo institucional y la dirección.');
+      return false;
+    }
+    const incompletos = representantes.filter(r => r.nombre.trim() || r.apellido.trim() || r.email.trim())
+      .some(r => !r.nombre.trim() || !r.apellido.trim() || !/^\S+@\S+\.\S+$/.test(r.email.trim()));
+    if (incompletos) {
+      setError('Cada representante necesita nombre, apellido y un correo válido.');
       return false;
     }
     if (!coordenadaValida(coordenadas.latitud, 90) || !coordenadaValida(coordenadas.longitud, 180)) {
@@ -155,6 +168,22 @@ export function RegistroEntidadPublico() {
                   <Field.Root><Field.Label>Latitud</Field.Label><Input inputMode="decimal" minH="12" borderRadius="xl" value={coordenadas.latitud} onChange={e => setCoordenadas(c => ({ ...c, latitud: e.target.value }))} placeholder="-34.6037" /></Field.Root>
                   <Field.Root><Field.Label>Longitud</Field.Label><Input inputMode="decimal" minH="12" borderRadius="xl" value={coordenadas.longitud} onChange={e => setCoordenadas(c => ({ ...c, longitud: e.target.value }))} placeholder="-58.3816" /></Field.Root>
                 </SimpleGrid>
+              </Box>
+              <Box {...section}>
+                <Heading as="h2" size="md" color="teal.800" mb="2">4. Representantes</Heading>
+                <Text fontSize="sm" color="gray.600" mb="5">Personas de contacto de la entidad. Es opcional, pero si cargás uno completá nombre, apellido y correo.</Text>
+                <Stack gap="5">
+                  {representantes.map((r, i) => (
+                    <SimpleGrid key={i} columns={{ base: 1, md: 2 }} gap="4" borderTopWidth={i ? '1px' : '0'} pt={i ? '5' : '0'}>
+                      <Field.Root><Field.Label>Nombre</Field.Label><Input minH="12" borderRadius="xl" value={r.nombre} onChange={e => updateRepresentante(i, 'nombre', e.target.value)} /></Field.Root>
+                      <Field.Root><Field.Label>Apellido</Field.Label><Input minH="12" borderRadius="xl" value={r.apellido} onChange={e => updateRepresentante(i, 'apellido', e.target.value)} /></Field.Root>
+                      <Field.Root><Field.Label>Correo</Field.Label><Input type="email" minH="12" borderRadius="xl" value={r.email} onChange={e => updateRepresentante(i, 'email', e.target.value)} placeholder="nombre@entidad.org" /></Field.Root>
+                      <Field.Root><Field.Label>DNI (opcional)</Field.Label><Input inputMode="numeric" minH="12" borderRadius="xl" value={r.nroDocumento} onChange={e => updateRepresentante(i, 'nroDocumento', e.target.value.replace(/\D/g, ''))} /></Field.Root>
+                      {representantes.length > 1 && <Button type="button" variant="ghost" colorPalette="red" alignSelf="start" onClick={() => setRepresentantes(l => l.filter((_, j) => j !== i))}>Quitar representante</Button>}
+                    </SimpleGrid>
+                  ))}
+                  <Button type="button" variant="outline" borderRadius="full" alignSelf="start" onClick={() => setRepresentantes(l => [...l, { nombre: '', apellido: '', nroDocumento: '', email: '' }])}>Agregar otro representante</Button>
+                </Stack>
               </Box>
               {error && <Text role="alert" color="red.600">{error}</Text>}
               {!pasoFinal ? <Button type="submit" alignSelf="end" borderRadius="full" colorPalette="teal" minH="12">Continuar</Button> : <Stack align="end" gap="3">
