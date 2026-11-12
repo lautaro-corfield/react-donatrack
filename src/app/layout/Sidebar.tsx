@@ -161,6 +161,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: SupervisoresIcon,
     requiredRole: 'ADMIN',
   },
+  { label: 'Administradores de Logística', path: '/dashboard/administradores-logistica', icon: SupervisoresIcon, requiredRole: 'ADMIN' },
 ];
 
 const ENTIDAD_NAV_ITEMS: NavItem[] = [
@@ -202,14 +203,16 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
   };
 
   const handleLogout = () => {
-    const loginPath = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR' ? '/login/admin' : '/login';
+    const loginPath = user?.role && ['ADMIN', 'SUPERVISOR', 'ADMIN_LOGISTICA'].includes(user.role) ? '/login/admin' : '/login';
     logout();
     navigate(loginPath);
     onNavigate?.();
   };
 
   // Filtrado de pestañas según permisos
-  const visibleNavItems = user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : user?.role === 'ENTIDAD_BENEFICIARIA' ? ENTIDAD_NAV_ITEMS : NAV_ITEMS.filter((item) => {
+  const visibleNavItems = user?.role === 'ADMIN_LOGISTICA'
+    ? [{ label: 'Logística', path: '/dashboard/logistica', icon: DonacionesIcon }]
+    : user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : user?.role === 'ENTIDAD_BENEFICIARIA' ? ENTIDAD_NAV_ITEMS : NAV_ITEMS.filter((item) => {
     if (item.requiredRole === 'ADMIN') {
       return isAdmin;
     }

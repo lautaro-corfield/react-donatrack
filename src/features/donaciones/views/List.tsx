@@ -174,13 +174,19 @@ export const DonacionesListView = () => {
                       </Stack>
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {d.donanteNombre ?? '—'}
+                      {d.donanteNombre ?? '—'}{d.donanteId != null && <Text fontSize="xs">Donante #{d.donanteId}</Text>}
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {[...new Set(d.donacionesSegmentadas.map(segmento =>
-                        segmento.entidadBeneficiariaNombre ||
-                        (segmento.entidadBeneficiariaAsignadaId ? `Entidad ${segmento.entidadBeneficiariaAsignadaId}` : 'Sin asignar')
-                      ))].join(', ') || 'Sin asignar'}
+                      {d.donacionesSegmentadas.length === 0 ? 'Sin asignar' : (
+                        <Stack gap="1">
+                          {d.donacionesSegmentadas.map(segmento => (
+                            <Text key={segmento.id}>
+                              Segmento #{segmento.id} · {segmento.entidadBeneficiariaAsignadaId == null ? 'Sin asignar' :
+                                `Entidad #${segmento.entidadBeneficiariaAsignadaId}${segmento.entidadBeneficiariaNombre ? ` · ${segmento.entidadBeneficiariaNombre}` : ''}`}
+                            </Text>
+                          ))}
+                        </Stack>
+                      )}
                     </Table.Cell>
                     <Table.Cell>
                       <Badge colorPalette={d.estado === 'ADJUDICADA' ? 'green' : 'yellow'} variant="subtle">

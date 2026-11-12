@@ -22,6 +22,7 @@ const publicAuthPaths = new Set([
   '/api/auth/login',
   '/api/auth/registro/donante',
   '/api/auth/registro/entidad',
+  '/api/auth/registro/logistica',
   '/api/auth/social/google/registro-entidad',
   '/api/auth/social/google',
   '/api/auth/social/google/registro-donante',
@@ -54,7 +55,7 @@ httpClient.interceptors.response.use(
 
       // 2. Redirección segura a la vista de login para evitar bucles de navegación
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.replace(role === 'ADMIN' || role === 'SUPERVISOR' ? '/login/admin' : '/login');
+        window.location.replace(role && ['ADMIN', 'SUPERVISOR', 'ADMIN_LOGISTICA'].includes(role) ? '/login/admin' : '/login');
       }
     }
     return Promise.reject(error);

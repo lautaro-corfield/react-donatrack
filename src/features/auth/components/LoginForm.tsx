@@ -61,6 +61,8 @@ export const LoginForm = ({ allowedRoles }: { allowedRoles: string[] }) => {
 
   return (
     <Stack gap="5" width="100%">
+      {(location.state as { logisticaActivada?: boolean } | null)?.logisticaActivada &&
+        <Text role="status" color="green.700">Cuenta activada. Ya podés iniciar sesión.</Text>}
       <form onSubmit={handleSubmit} style={{ width: '100%' }}>
         <Stack gap="4" width="100%">
           <Input

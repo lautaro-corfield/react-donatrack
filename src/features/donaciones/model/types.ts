@@ -6,6 +6,7 @@ export interface Donacion {
   id: number;
   descripcion: string;
   donanteNombre: string | null;
+  donanteId: number | null;
   fechaIngreso: string;
   estado: EstadoDonacion;
   donacionesSegmentadas: {

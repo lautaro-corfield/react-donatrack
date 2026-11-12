@@ -21,7 +21,7 @@ export function AvisosEntidad() {
             {aviso.fecha && <Text fontSize="sm">{new Date(aviso.fecha).toLocaleString('es-AR')}</Text>}
             <Text>{aviso.mensaje}</Text>
             <Button {...control} asChild variant="outline" alignSelf="start">
-              <Link to="/dashboard/donaciones-recibidas">Ver donaciones recibidas</Link>
+              <Link to={aviso.segmentoId == null ? '/dashboard/donaciones-recibidas' : `/dashboard/donaciones-recibidas?segmento=${aviso.segmentoId}`}>Ver donaciones recibidas</Link>
             </Button>
           </Stack>
         ))}
