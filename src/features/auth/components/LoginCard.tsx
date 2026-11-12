@@ -69,7 +69,11 @@ export const LoginCard = ({ staff = false }: { staff?: boolean }) => {
         )}
       </Card.Body>
 
-
+      <Card.Footer justifyContent="center" pb="6">
+        <RouterLink to="/" style={{ color: 'var(--chakra-colors-gray-600)', fontSize: '0.875rem' }}>
+          ← Volver al inicio
+        </RouterLink>
+      </Card.Footer>
     </Card.Root>
   );
 };
