@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Box,
   Button,
   Card,
   HStack,
+  Input,
+  NativeSelect,
   Stack,
   Table,
   Text,
@@ -15,6 +17,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { useDonacionesStore } from '../model/donacionesStore';
 import type { Donacion } from '../model/types';
 import { MatchmakingPanel } from '../components/MatchmakingPanel';
+import { useAuthStore } from '@/features/auth/model/authStore';
 
 const PlusIcon = () => (
   <svg
@@ -84,10 +87,25 @@ export const DonacionesListView = () => {
   const error = useDonacionesStore((state) => state.error);
   const fetchDonaciones = useDonacionesStore((state) => state.fetchDonaciones);
   const deleteDonacion = useDonacionesStore((state) => state.deleteDonacion);
+  const esAdmin = useAuthStore((state) => state.user?.role === 'ADMIN' || state.user?.roles?.includes('ADMIN') || state.user?.roles?.includes('ROLE_ADMIN'));
+  const [categoria, setCategoria] = useState('');
+  const [subcategoria, setSubcategoria] = useState('');
+  const [estado, setEstado] = useState('');
+  const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
     fetchDonaciones();
   }, [fetchDonaciones]);
+
+  const categorias = useMemo(() => [...new Set(donaciones.flatMap(d => d.donacionesSegmentadas.map(s => s.categoria).filter((c): c is NonNullable<typeof c> => Boolean(c))))].sort(), [donaciones]);
+  const subcategorias = useMemo(() => [...new Set(donaciones.flatMap(d => d.donacionesSegmentadas
+    .filter(s => !categoria || s.categoria === categoria).map(s => s.subCategoria).filter(Boolean)))].sort((a, b) => a.localeCompare(b, 'es-AR')), [donaciones, categoria]);
+  const donacionesVisibles = useMemo(() => donaciones.map(d => ({
+    ...d,
+    donacionesSegmentadas: d.donacionesSegmentadas.filter(s => (!categoria || s.categoria === categoria) && (!subcategoria || s.subCategoria === subcategoria)),
+  })).filter(d => (d.donacionesSegmentadas.length > 0 || (!categoria && !subcategoria))
+    && (!estado || d.estado === estado)
+    && (!busqueda.trim() || `${d.descripcion} ${d.donanteNombre ?? ''} ${d.donacionesSegmentadas.map(s => s.subCategoria).join(' ')}`.toLocaleLowerCase('es-AR').includes(busqueda.trim().toLocaleLowerCase('es-AR')))), [donaciones, categoria, subcategoria, estado, busqueda]);
 
   const handleDelete = async (id: number, descripcion: string) => {
     if (window.confirm(`¿Estás seguro de eliminar la donación: "${descripcion}"?`)) {
@@ -102,7 +120,7 @@ export const DonacionesListView = () => {
         subtitle="Ingresos al depósito, donantes y destinos asignados."
         badge={
           <Badge colorPalette="teal" variant="subtle" px="2.5" py="1" borderRadius="full">
-            {donaciones.length} registros
+            {esAdmin ? `${donacionesVisibles.length} de ${donaciones.length} registros` : `${donaciones.length} registros`}
           </Badge>
         }
         action={
@@ -119,6 +137,40 @@ export const DonacionesListView = () => {
       />
 
       {error && <Text role="alert" color="red.700">{error}</Text>}
+      {esAdmin && (
+        <Card.Root borderWidth="1px" borderRadius="2xl" shadow="sm" bg="white">
+          <Card.Body>
+            <Stack gap="4">
+              <Text fontWeight="semibold" color="gray.700">Filtrar donaciones</Text>
+              <HStack gap="3" align="end" flexWrap="wrap">
+                <Box flex="1" minW="200px">
+                  <Text fontSize="sm" mb="1" color="gray.600">Buscar</Text>
+                  <Input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Descripción, donante o bien" borderRadius="xl" />
+                </Box>
+                <Box flex="1" minW="180px">
+                  <Text fontSize="sm" mb="1" color="gray.600">Categoría</Text>
+                  <NativeSelect.Root><NativeSelect.Field aria-label="Filtrar por categoría" value={categoria} onChange={e => { setCategoria(e.target.value); setSubcategoria(''); }} borderRadius="xl">
+                    <option value="">Todas las categorías</option>{categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                  </NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+                </Box>
+                <Box flex="1" minW="180px">
+                  <Text fontSize="sm" mb="1" color="gray.600">Subcategoría</Text>
+                  <NativeSelect.Root><NativeSelect.Field aria-label="Filtrar por subcategoría" value={subcategoria} onChange={e => setSubcategoria(e.target.value)} borderRadius="xl">
+                    <option value="">Todas las subcategorías</option>{subcategorias.map(s => <option key={s} value={s}>{s}</option>)}
+                  </NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+                </Box>
+                <Box flex="1" minW="170px">
+                  <Text fontSize="sm" mb="1" color="gray.600">Estado</Text>
+                  <NativeSelect.Root><NativeSelect.Field aria-label="Filtrar por estado" value={estado} onChange={e => setEstado(e.target.value)} borderRadius="xl">
+                    <option value="">Todos los estados</option><option value="PENDIENTE">Pendiente</option><option value="ADJUDICADA">Adjudicada</option>
+                  </NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+                </Box>
+                <Button variant="outline" borderRadius="xl" onClick={() => { setBusqueda(''); setCategoria(''); setSubcategoria(''); setEstado(''); }}>Limpiar</Button>
+              </HStack>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      )}
       <Card.Root borderWidth="1px" borderRadius="2xl" shadow="sm" bg="white" overflow="hidden">
         <Box overflowX="auto">
           <Table.Root size="md" variant="line">
@@ -136,14 +188,14 @@ export const DonacionesListView = () => {
             </Table.Header>
 
             <Table.Body>
-              {donaciones.length === 0 ? (
+              {donacionesVisibles.length === 0 ? (
                 <Table.Row>
                   <Table.Cell colSpan={6} textAlign="center" py="8" color="gray.500">
-                    {isLoading ? 'Cargando donaciones…' : error ? 'Listado no disponible.' : 'Todavía no hay donaciones registradas.'}
+                    {isLoading ? 'Cargando donaciones…' : error ? 'Listado no disponible.' : donaciones.length > 0 ? 'No hay donaciones que coincidan con los filtros.' : 'Todavía no hay donaciones registradas.'}
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                donaciones.map((d) => {
+                donacionesVisibles.map((d) => {
                   const grupos = d.donacionesSegmentadas.reduce<Record<string, typeof d.donacionesSegmentadas>>((acc, segmento) => {
                     (acc[segmento.subCategoria] ??= []).push(segmento);
                     return acc;
