@@ -80,7 +80,9 @@ export function RegistroDonantePublico() {
                       Elegí cómo ingresar con {correo ? <strong>{correo}</strong> : 'el correo indicado'}.
                     </Text>
                   </Box>
-                  <Button disabled={guardando || datosPendientes.password.length < 8} onClick={registrarConPassword}>Registrarme con contraseña</Button>
+                  <Button colorPalette="teal" borderRadius="full" minH="12" disabled={guardando || datosPendientes.password.length < 8} onClick={registrarConPassword}>
+                    Inicia sesión
+                  </Button>
                   <GoogleLoginButton onCredential={registrarConGoogle} buttonText="signup_with" />
                   {error && <Text role="alert" color="red.600">{error}</Text>}
                   <Button minH="12" minW="12" borderRadius="xl" variant="ghost" alignSelf="center" onClick={() => setDatosPendientes(null)}>
