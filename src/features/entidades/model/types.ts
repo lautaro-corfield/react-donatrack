@@ -35,3 +35,27 @@ export interface Entidad {
     medioDeContacto?: Record<string, string[]>;
   };
 }
+
+export interface EventoDonacion { estado: string; fecha: string; descripcion: string | null }
+
+export interface SegmentoRecibido {
+  id: number;
+  estado: string;
+  categoria: string | null;
+  subcategoria: string | null;
+  cantidad: number;
+  unidad: string | null;
+  eventos: EventoDonacion[];
+  comprobante: { id: string; fechaEntrega: string; detalles: string | null } | null;
+  fotos: number[];
+}
+
+export interface DonacionRecibida {
+  id: number;
+  descripcion: string | null;
+  fechaIngreso: string | null;
+  donante: string | null;
+  segmentos: SegmentoRecibido[];
+}
+
+export interface AvisoEntidad { id: number; asunto: string; mensaje: string; fecha: string | null }

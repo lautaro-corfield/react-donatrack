@@ -165,6 +165,8 @@ const NAV_ITEMS: NavItem[] = [
 
 const ENTIDAD_NAV_ITEMS: NavItem[] = [
   { label: 'Mis necesidades', path: '/dashboard/necesidades', icon: EntidadesIcon },
+  { label: 'Donaciones recibidas', path: '/dashboard/donaciones-recibidas', icon: DonacionesIcon },
+  { label: 'Avisos', path: '/dashboard/avisos', icon: BellIcon },
 ];
 
 const DONANTE_NAV_ITEMS: NavItem[] = [
