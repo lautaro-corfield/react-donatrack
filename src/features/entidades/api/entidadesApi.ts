@@ -32,5 +32,5 @@ export const entidadesApi = {
     httpClient.post('/api/users/entidades', { entidadId, email }),
   misNecesidades: () => httpClient.get<Necesidad[]>('/api/necesidades/me').then(r => r.data),
   necesidadesDe: (id: number) => httpClient.get<Necesidad[]>(`/api/necesidades/entidad/${id}`).then(r => r.data),
-  crearNecesidad: (datos: CrearNecesidad) => httpClient.post<Necesidad>('/api/necesidades', { ...datos, entidadBeneficiariaId: 0 }).then(r => r.data),
+  crearNecesidad: (datos: CrearNecesidad) => httpClient.post<Necesidad>('/api/necesidades/me', { ...datos, entidadBeneficiariaId: 0 }).then(r => r.data),
 };

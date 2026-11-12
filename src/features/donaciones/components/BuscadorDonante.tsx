@@ -52,7 +52,7 @@ export function BuscadorDonante({ buscar, seleccionado, onSelect, disabled }: Bu
         <Stack direction={{ base: 'column', sm: 'row' }} w="full">
           <Input
             type="search"
-            placeholder="Ej. pangaro o 345"
+            placeholder="Mail donante o número de DNI"
             maxLength={254}
             value={valor}
             disabled={disabled || buscando}

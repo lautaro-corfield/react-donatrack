@@ -28,9 +28,8 @@ export function MisNecesidades() {
       await entidadesApi.crearNecesidad(form);
       setForm(vacia);
       await cargar();
-    } catch (err) {
-      const data = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: unknown } }).response?.data : null;
-      setError(typeof data === 'string' ? data : 'No se pudo guardar la necesidad.');
+    } catch {
+      setError('No se pudo guardar la necesidad.');
     } finally { setGuardando(false); }
   }
 
