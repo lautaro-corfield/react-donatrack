@@ -3,6 +3,8 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { PublicOnlyRoute } from './PublicOnlyRoute';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { LoginPage } from '@/pages/LoginPage';
+import { LandingPage } from '@/pages/LandingPage';
+import { LegalPage } from '@/pages/LegalPage';
 import { useAuthStore } from '@/features/auth';
 import { DonantesListView } from '@/features/donantes/views/List';
 import { GestionDonantes } from '@/features/donantes/views/Gestion';
@@ -47,6 +49,11 @@ export const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rutas públicas para cualquier visitante */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/legal" element={<LegalPage tipo="legal" />} />
+        <Route path="/privacidad" element={<LegalPage tipo="privacidad" />} />
+
         {/* Rutas Públicas (exclusivas para usuarios sin autenticar) */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
@@ -85,9 +92,8 @@ export const AppRouter = () => {
           </Route>
         </Route>
 
-        {/* Redirecciones por defecto */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Cualquier otra ruta vuelve a la landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

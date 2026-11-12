@@ -13,6 +13,9 @@ export interface RegistroEntidad {
     ciudadNombre: string;
     provinciaNombre: string;
     paisNombre: string;
+    /** Opcionales: ubican a la entidad en el mapa público de entregas. */
+    latitud?: number | null;
+    longitud?: number | null;
   };
   mediosDeContacto: { medio: 'EMAIL' | 'SMS' | 'WHATSAPP'; valor: string }[];
   medioPredeterminado: { medio: 'EMAIL'; valor: string };
