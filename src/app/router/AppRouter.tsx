@@ -7,7 +7,7 @@ import { LandingPage } from '@/pages/LandingPage';
 import { LegalPage } from '@/pages/LegalPage';
 import { useAuthStore } from '@/features/auth';
 import { DonantesListView } from '@/features/donantes/views/List';
-import { GestionDonantes } from '@/features/donantes/views/Gestion';
+import { DonantesHubView } from '@/features/donantes/views/Hub';
 import { DonantesCreateView } from '@/features/donantes/views/Create';
 import { RegistroDonantePublico } from '@/features/donantes/views/RegistroPublico';
 import { PortalDonante } from '@/features/donantes/views/Portal';
@@ -88,7 +88,7 @@ export const AppRouter = () => {
               <Route path="donaciones" element={<DonacionesListView />} />
               <Route path="donaciones/nueva" element={<DonacionesCreateView />} />
               <Route path="donaciones/editar/:id" element={<DonacionesEditView />} />
-              <Route path="donantes" element={<GestionDonantes />} />
+              <Route path="donantes" element={<DonantesHubView />} />
               <Route path="donantes/nuevo" element={<DonantesCreateView />} />
               <Route path="donantes/lista" element={<DonantesListView />} />
               <Route path="entidades" element={<DirectorioEntidades />} />

@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent, type ChangeEvent } from 'react';
+import { useState, type DragEvent, type ChangeEvent } from 'react';
 import {
   Badge,
   Box,
@@ -10,7 +10,6 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { toaster } from '@/shared/components/toaster.instance';
-import { getDonanteEmail } from '../model/donanteUtils';
 import { useDonantesStore, type CsvImportProgress } from '../model/donantesStore';
 
 interface CsvPreviewRow {
@@ -19,40 +18,25 @@ interface CsvPreviewRow {
   nombre: string;
   email: string;
   telefono: string;
-  accion: 'ALTA' | 'ACTUALIZAR';
-}
-
-interface CsvPrecheckSummary {
-  totalRawRows: number;
-  totalUniqueRows: number;
-  newCount: number;
-  updateCount: number;
-  internalDuplicates: number;
 }
 
 export const CsvImportCard = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previewRows, setPreviewRows] = useState<CsvPreviewRow[]>([]);
-  const [precheck, setPrecheck] = useState<CsvPrecheckSummary | null>(null);
+  const [totalDetectedRows, setTotalDetectedRows] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState<CsvImportProgress | null>(null);
 
-  const donantes = useDonantesStore((state) => state.donantes);
-  const fetchDonantes = useDonantesStore((state) => state.fetchDonantes);
   const importarCSV = useDonantesStore((state) => state.importarCSV);
-
-  useEffect(() => {
-    fetchDonantes();
-  }, [fetchDonantes]);
 
   const handleDownloadTemplate = () => {
     const csvContent =
       'TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono\n' +
       'HUMANA,DNI,12345678,Juan Perez,juan.perez@example.com,1122334455\n' +
-      'JURIDICA,CUIT,30-71234567-9,Fundacion Ayuda Humana,juan.perez@example.com,1199887766\n' +
+      'JURIDICA,CUIT,30-71234567-9,Fundacion Ayuda Humana,contacto@fundacionayuda.org,1199887766\n' +
       'HUMANA,DNI,87654321,Maria Gomez,maria.gomez@example.com,1155667788\n' +
-      'JURIDICA,CUIT,30-99887766-5,Empresa Comercial S.A.,juan.perez@example.com,1144332211\n';
+      'JURIDICA,CUIT,30-99887766-5,Supermercados del Sur S.A.,donaciones@supersur.com,1144332211\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -70,9 +54,13 @@ export const CsvImportCard = () => {
     });
   };
 
+  /**
+   * Solo lee una muestra liviana para previsualizar las primeras 5 filas en la UI.
+   * Toda la verificación de emails duplicados, altas y actualizaciones se delega al Backend.
+   */
   const parsePreview = (uploadedFile: File) => {
     if (uploadedFile.name.toLowerCase().endsWith('.xlsx')) {
-      setPrecheck(null);
+      setTotalDetectedRows(0);
       setPreviewRows([]);
       return;
     }
@@ -88,54 +76,21 @@ export const CsvImportCard = () => {
         ? lines.slice(1)
         : lines;
 
-      const existingEmails = new Set<string>();
-      for (const d of donantes) {
-        const em = getDonanteEmail(d).toLowerCase().trim();
-        if (em) existingEmails.add(em);
-      }
-
-      const uniqueByEmail = new Map<string, string[]>();
-      let validRawCount = 0;
-
-      for (const line of dataLines) {
-        const cols = line.split(',').map((c) => c.trim());
-        if (cols.length >= 5 && cols[4]) {
-          validRawCount++;
-          uniqueByEmail.set(cols[4].toLowerCase(), cols);
-        }
-      }
-
-      let newCount = 0;
-      let updateCount = 0;
       const rows: CsvPreviewRow[] = [];
-
-      for (const [emailLower, cols] of uniqueByEmail.entries()) {
-        const isExisting = existingEmails.has(emailLower);
-        if (isExisting) {
-          updateCount++;
-        } else {
-          newCount++;
-        }
-
-        if (rows.length < 5) {
+      for (const line of dataLines.slice(0, 5)) {
+        const cols = line.split(',').map((c) => c.trim());
+        if (cols.length >= 4) {
           rows.push({
             tipo: cols[0] || 'HUMANA',
             doc: `${cols[1] || 'DOC'}: ${cols[2] || ''}`,
             nombre: cols[3] || 'Sin Nombre',
             email: cols[4] || 'Sin Email',
             telefono: cols[5] || 'Sin Teléfono',
-            accion: isExisting ? 'ACTUALIZAR' : 'ALTA',
           });
         }
       }
 
-      setPrecheck({
-        totalRawRows: validRawCount,
-        totalUniqueRows: uniqueByEmail.size,
-        newCount,
-        updateCount,
-        internalDuplicates: Math.max(0, validRawCount - uniqueByEmail.size),
-      });
+      setTotalDetectedRows(dataLines.length);
       setPreviewRows(rows);
     };
     reader.readAsText(uploadedFile);
@@ -194,7 +149,7 @@ export const CsvImportCard = () => {
       if (result.success) {
         setFile(null);
         setPreviewRows([]);
-        setPrecheck(null);
+        setTotalDetectedRows(0);
       }
     } catch {
       toaster.create({
@@ -285,42 +240,6 @@ export const CsvImportCard = () => {
         </VStack>
       </Box>
 
-      {/* Diagnóstico de Comprobación Local de Emails (Pre-envío) */}
-      {precheck && (
-        <Box
-          p="4"
-          borderWidth="1px"
-          borderColor="teal.200"
-          borderRadius="2xl"
-          bg="teal.50/40"
-        >
-          <VStack align="stretch" gap="2.5">
-            <HStack justify="space-between" wrap="wrap">
-              <Text fontSize="sm" fontWeight="bold" color="teal.900">
-                ⚡ Comprobación local de emails completada:
-              </Text>
-              <Badge colorPalette="teal" variant="solid" borderRadius="full" px="3" py="0.5">
-                {precheck.totalUniqueRows} registros únicos listos
-              </Badge>
-            </HStack>
-
-            <HStack gap="3" wrap="wrap">
-              <Badge colorPalette="green" variant="subtle" px="3" py="1" borderRadius="full">
-                ✨ Nuevos para dar de alta: {precheck.newCount}
-              </Badge>
-              <Badge colorPalette="orange" variant="subtle" px="3" py="1" borderRadius="full">
-                🔄 Duplicados por email (se actualizarán): {precheck.updateCount}
-              </Badge>
-              {precheck.internalDuplicates > 0 && (
-                <Badge colorPalette="gray" variant="subtle" px="3" py="1" borderRadius="full">
-                  🧹 Repetidos dentro del CSV depurados: {precheck.internalDuplicates}
-                </Badge>
-              )}
-            </HStack>
-          </VStack>
-        </Box>
-      )}
-
       {/* Tabla de Preview si se cargó un archivo */}
       {previewRows.length > 0 && (
         <Box
@@ -331,20 +250,26 @@ export const CsvImportCard = () => {
           bg="white"
           shadow="xs"
         >
-          <HStack justify="space-between" mb="3">
+          <HStack justify="space-between" mb="3" wrap="wrap" gap="2">
             <Text fontSize="sm" fontWeight="bold" color="gray.800">
               Vista previa de los primeros registros detectados:
             </Text>
-            <Badge colorPalette="gray" variant="outline" borderRadius="full" px="2.5" py="0.5">
-              {previewRows.length} filas previsualizadas
-            </Badge>
+            <HStack gap="2">
+              {totalDetectedRows > 0 && (
+                <Badge colorPalette="teal" variant="subtle" borderRadius="full" px="3" py="0.5">
+                  {totalDetectedRows} filas totales en archivo
+                </Badge>
+              )}
+              <Badge colorPalette="gray" variant="outline" borderRadius="full" px="2.5" py="0.5">
+                {previewRows.length} filas previsualizadas
+              </Badge>
+            </HStack>
           </HStack>
 
           <Box overflowX="auto">
             <Table.Root size="sm" variant="outline" borderRadius="xl">
               <Table.Header bg="gray.50">
                 <Table.Row>
-                  <Table.ColumnHeader>Acción</Table.ColumnHeader>
                   <Table.ColumnHeader>Tipo</Table.ColumnHeader>
                   <Table.ColumnHeader>Nombre / Razón Social</Table.ColumnHeader>
                   <Table.ColumnHeader>Documento</Table.ColumnHeader>
@@ -355,16 +280,6 @@ export const CsvImportCard = () => {
               <Table.Body>
                 {previewRows.map((r, i) => (
                   <Table.Row key={i}>
-                    <Table.Cell>
-                      <Badge
-                        colorPalette={r.accion === 'ACTUALIZAR' ? 'orange' : 'green'}
-                        variant="subtle"
-                        size="xs"
-                        borderRadius="full"
-                      >
-                        {r.accion === 'ACTUALIZAR' ? '🔄 Actualizar' : '✨ Alta'}
-                      </Badge>
-                    </Table.Cell>
                     <Table.Cell>
                       <Badge
                         colorPalette={r.tipo === 'HUMANA' ? 'teal' : 'purple'}
@@ -387,7 +302,7 @@ export const CsvImportCard = () => {
         </Box>
       )}
 
-      {/* Progreso de subida por lotes */}
+      {/* Progreso de subida por lotes al Backend */}
       {isProcessing && progress && (
         <Box
           p="4"
@@ -420,7 +335,7 @@ export const CsvImportCard = () => {
             onClick={() => {
               setFile(null);
               setPreviewRows([]);
-              setPrecheck(null);
+              setTotalDetectedRows(0);
             }}
             disabled={isProcessing}
           >
@@ -438,7 +353,7 @@ export const CsvImportCard = () => {
             _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
             transition="all 0.2s ease"
           >
-            {isProcessing ? 'Procesando lotes...' : '🚀 Iniciar Importación de Donantes'}
+            {isProcessing ? 'Enviando al servidor...' : '🚀 Iniciar Importación de Donantes'}
           </Button>
         </HStack>
       )}

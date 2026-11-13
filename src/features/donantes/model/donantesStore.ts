@@ -565,14 +565,16 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
       }
     }
 
-    // Para CSV: 1) Comprobación y deduplicación local en O(N), 2) Envío por lotes de 2.500 registros
+    // Para CSV: el cálculo de duplicados/actualizaciones se delega 100% al Backend (ImportadorCargaMasiva).
+    // Particionamos en lotes de 2.500 líneas con reintento automático para que ninguna petición supere
+    // el timeout de proxy HTTP de Render (30s-100s) ni se corte la conexión a mitad de los 20.000 registros.
     const CSV_BATCH_SIZE = 2500;
     let processedRows = 0;
-    let totalUniqueRows = 0;
+    let totalRows = 0;
 
     try {
       const rawText = await file.text();
-      const text = rawText.replace(/^\uFEFF/, ''); // Quitar BOM UTF-8 si existe
+      const text = rawText.replace(/^\uFEFF/, '');
       const allLines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
 
       if (allLines.length === 0) {
@@ -586,72 +588,72 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
         : 'TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono';
       const dataLines = hasHeader ? allLines.slice(1) : allLines;
 
-      // Índice O(1) de emails actualmente cargados en el store local
-      const existingEmails = new Set<string>();
-      for (const d of get().donantes) {
-        const em = getDonanteEmail(d).toLowerCase().trim();
-        if (em) existingEmails.add(em);
-      }
-
-      // Deduplicar filas del propio CSV por email (conservando la última aparición)
-      const uniqueByEmail = new Map<string, string>();
-      for (const line of dataLines) {
-        const cols = line.split(',');
-        if (cols.length >= 5) {
-          const email = cols[4].trim().toLowerCase();
-          if (email) {
-            uniqueByEmail.set(email, line);
-          }
-        }
-      }
-
-      // Separar localmente en registros a ACTUALIZAR (email existente) y registros NUEVOS (alta)
-      const linesToUpdate: string[] = [];
-      const linesToInsert: string[] = [];
-
-      for (const [email, line] of uniqueByEmail.entries()) {
-        if (existingEmails.has(email)) {
-          linesToUpdate.push(line);
-        } else {
-          linesToInsert.push(line);
-        }
-      }
-
-      // Primero enviamos las actualizaciones y luego las altas
-      const orderedLines = [...linesToUpdate, ...linesToInsert];
-      totalUniqueRows = orderedLines.length;
-
-      if (totalUniqueRows === 0) {
+      totalRows = dataLines.length;
+      if (totalRows === 0) {
         set({ isLoading: false });
         return {
           success: false,
           count: 0,
-          message: 'No se encontraron registros válidos con email en el archivo CSV.',
+          message: 'No se encontraron filas de datos en el archivo CSV.',
         };
       }
 
-      const totalBatches = Math.ceil(totalUniqueRows / CSV_BATCH_SIZE);
+      const totalBatches = Math.ceil(totalRows / CSV_BATCH_SIZE);
+      let lastServerMessage = '';
 
       for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
         const start = batchIdx * CSV_BATCH_SIZE;
-        const chunk = orderedLines.slice(start, start + CSV_BATCH_SIZE);
+        const chunk = dataLines.slice(start, start + CSV_BATCH_SIZE);
 
         onProgress?.({
           currentBatch: batchIdx + 1,
           totalBatches,
           processedRows,
-          totalRows: totalUniqueRows,
-          stage: `Enviando lote ${batchIdx + 1} de ${totalBatches} (${processedRows} / ${totalUniqueRows} registros)...`,
+          totalRows,
+          stage:
+            totalBatches === 1
+              ? `Procesando ${totalRows} registros en el servidor...`
+              : `Procesando lote ${batchIdx + 1} de ${totalBatches} en el servidor (${processedRows} / ${totalRows})...`,
         });
 
-        const chunkCsvContent = `${headerLine}\n${chunk.join('\n')}\n`;
-        const chunkFile = new File([chunkCsvContent], `lote_${batchIdx + 1}_${file.name}`, {
-          type: 'text/csv;charset=utf-8;',
-        });
+        const chunkFile =
+          totalBatches === 1
+            ? file
+            : new File([`${headerLine}\n${chunk.join('\n')}\n`], `lote_${batchIdx + 1}_${file.name}`, {
+                type: 'text/csv;charset=utf-8;',
+              });
 
-        const res = await donantesApi.importarCSV(chunkFile);
+        // Reintento automático (hasta 2 reintentos) ante micro-cortes de red o latencia en Render
+        let res = null;
+        let lastBatchErr: unknown = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            res = await donantesApi.importarCSV(chunkFile);
+            lastBatchErr = null;
+            break;
+          } catch (batchErr) {
+            lastBatchErr = batchErr;
+            if (attempt < 3) {
+              onProgress?.({
+                currentBatch: batchIdx + 1,
+                totalBatches,
+                processedRows,
+                totalRows,
+                stage: `Reintentando lote ${batchIdx + 1} de ${totalBatches} (intento ${attempt + 1}/3)...`,
+              });
+              await new Promise((r) => setTimeout(r, 1500));
+            }
+          }
+        }
+
+        if (lastBatchErr) {
+          throw lastBatchErr;
+        }
         if (res && res.success === false) {
           throw new Error(res.message || `Error en el lote ${batchIdx + 1}`);
+        }
+        if (res?.message) {
+          lastServerMessage = res.message;
         }
 
         processedRows += chunk.length;
@@ -660,8 +662,8 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
       onProgress?.({
         currentBatch: totalBatches,
         totalBatches,
-        processedRows: totalUniqueRows,
-        totalRows: totalUniqueRows,
+        processedRows: totalRows,
+        totalRows,
         stage: 'Sincronizando padrón actualizado con el servidor...',
       });
 
@@ -670,12 +672,14 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
 
       return {
         success: true,
-        count: totalUniqueRows,
-        message: `Se procesaron ${totalUniqueRows} donantes exitosamente (${linesToInsert.length} nuevos dados de alta y ${linesToUpdate.length} actualizados por email).`,
+        count: totalRows,
+        message:
+          totalBatches === 1 && lastServerMessage
+            ? lastServerMessage
+            : `Se procesaron ${totalRows} registros en el servidor exitosamente.`,
       };
     } catch (err) {
       set({ isLoading: false });
-      // Sincronizamos el estado real desde el servidor para no mostrar datos falsos en memoria
       await get().fetchDonantes(true);
       const errorMsg = err instanceof Error ? err.message : 'Error de red o tiempo de espera agotado';
       return {
@@ -683,7 +687,7 @@ export const useDonantesStore = create<DonantesState>((set, get) => ({
         count: processedRows,
         message:
           processedRows > 0
-            ? `La carga se interrumpió tras confirmar ${processedRows} de ${totalUniqueRows} registros (${errorMsg}). El padrón muestra únicamente los registros efectivamente guardados en la base.`
+            ? `La carga se interrumpió tras confirmar ${processedRows} de ${totalRows} registros (${errorMsg}).`
             : `No se pudo completar la importación en el servidor (${errorMsg}).`,
       };
     }
