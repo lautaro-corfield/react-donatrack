@@ -29,10 +29,15 @@ import {
   SupervisoresCreateView,
 } from '@/features/supervisores';
 
+import { ActivarCuentaLogistica, AdministradoresLogistica } from '@/features/logistics/views/Acceso';
+import { PanelLogistica } from '@/features/logistics/views/PanelLogistica';
+import { HistorialEnvios } from '@/features/logistics/views/HistorialEnvios';
+
 function InicioDashboard() {
   const rol = useAuthStore(state => state.user?.role);
   if (rol === 'DONANTE') return <Navigate to="/dashboard/mi-actividad" replace />;
   if (rol === 'ENTIDAD_BENEFICIARIA') return <Navigate to="/dashboard/necesidades" replace />;
+  if (rol === 'ADMIN_LOGISTICA') return <Navigate to="/dashboard/logistica" replace />;
   if (rol === 'ADMIN' || rol === 'SUPERVISOR') return <Navigate to="/dashboard/donaciones" replace />;
   return <p role="alert">Tu cuenta no tiene un rol habilitado para acceder al panel.</p>;
 }
@@ -59,6 +64,7 @@ export const AppRouter = () => {
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/login/admin" element={<LoginPage staff />} />
+          <Route path="/registro/logistica" element={<ActivarCuentaLogistica />} />
         </Route>
         <Route path="/registro/donante" element={<RegistroDonantePublico />} />
         <Route path="/registro/entidad" element={<RegistroEntidadPublico />} />
@@ -87,7 +93,12 @@ export const AppRouter = () => {
               <Route path="donantes/lista" element={<DonantesListView />} />
               <Route path="entidades" element={<DirectorioEntidades />} />
             </Route>
+            <Route element={<AccesoDashboard roles={['ADMIN_LOGISTICA']} />}>
+              <Route path="logistica" element={<PanelLogistica />} />
+              <Route path="logistica/historial" element={<HistorialEnvios />} />
+            </Route>
             <Route element={<AccesoDashboard roles={['ADMIN']} />}>
+              <Route path="administradores-logistica" element={<AdministradoresLogistica />} />
               <Route path="supervisores" element={<SupervisoresListView />} />
               <Route path="supervisores/nuevo" element={<SupervisoresCreateView />} />
             </Route>

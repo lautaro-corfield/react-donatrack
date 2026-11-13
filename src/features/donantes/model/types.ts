@@ -44,6 +44,7 @@ export interface AvisoDonante {
   asunto: string;
   mensaje: string;
   fecha: string | null;
+  donacionId?: number | null;
 }
 
 export interface AltaDonante {

@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Badge, Box, Button, Field, Heading, HStack, Image, Input, NativeSelect, Stack, Text, Textarea } from '@chakra-ui/react';
 import { isAxiosError } from 'axios';
@@ -95,11 +96,13 @@ function AccionesEnCamino({ donacion, segmento, listo }: { donacion: DonacionRec
 }
 
 export function DonacionesRecibidas() {
+  const [params, setParams] = useSearchParams();
+  const segmentoAviso = params.get('segmento');
   const consulta = useConsulta(entidadesApi.misDonaciones);
   const [estado, setEstado] = useState('');
   const estados = [...new Set(consulta.datos?.flatMap(d => d.segmentos.map(s => s.estado)) ?? [])].sort();
   const resultados = consulta.datos?.flatMap(d => {
-    const segmentos = d.segmentos.filter(s => !estado || s.estado === estado);
+    const segmentos = d.segmentos.filter(s => (!estado || s.estado === estado) && (!segmentoAviso || String(s.id) === segmentoAviso));
     return segmentos.length ? [{ ...d, segmentos }] : [];
   });
 
@@ -107,6 +110,7 @@ export function DonacionesRecibidas() {
     <Stack gap="6" maxW="6xl" mx="auto">
       <PageHeader title="Donaciones recibidas" subtitle="Seguí las donaciones asignadas a tu entidad y confirmá las entregas."
         action={<Button {...control} variant="outline" onClick={consulta.recargar}>Actualizar</Button>} />
+      {segmentoAviso && <Button {...control} variant="outline" alignSelf="start" onClick={() => setParams({})}>Ver todas las donaciones</Button>}
       {!resultados ? <EstadoConsulta {...consulta} /> : <>
         <Box maxW="xs">
           <NativeSelect.Root>
@@ -146,7 +150,9 @@ export function DonacionesRecibidas() {
                 )}
                 {s.fotos.length > 0 && <HStack mt="2" wrap="wrap">{s.fotos.map(f => <Foto key={f} id={f} />)}</HStack>}
                 {s.estado === 'NO_RECIBIDA' && <Text mt="2" fontSize="sm" color="orange.700">Administración está revisando esta entrega.</Text>}
-                {s.estado === 'EN_TRASLADO' && <AccionesEnCamino donacion={d} segmento={s} listo={consulta.recargar} />}
+                {s.estado === 'EN_TRASLADO' && (s.puedeConfirmarRecepcion === false
+                  ? <Text fontSize="sm">La confirmación se habilita cuando Logística registra la llegada.</Text>
+                  : <AccionesEnCamino donacion={d} segmento={s} listo={consulta.recargar} />)}
               </Box>
             ))}
           </Stack>

@@ -69,8 +69,12 @@ const TrashIcon = () => (
 );
 
 function estadoVisible(donacion: Donacion) {
-  if (donacion.donacionesSegmentadas.length > 0 &&
-      donacion.donacionesSegmentadas.every(segmento => segmento.estado === 'EN_DEPOSITO')) {
+  const segmentos = donacion.donacionesSegmentadas;
+  const entregados = segmentos.filter(segmento => segmento.estado === 'ENTREGADA').length;
+  if (entregados > 0) {
+    return entregados === segmentos.length ? 'Entregada' : `Entrega parcial (${entregados}/${segmentos.length})`;
+  }
+  if (segmentos.length > 0 && segmentos.every(segmento => segmento.estado === 'EN_DEPOSITO')) {
     return 'En depósito';
   }
   return donacion.estado === 'ADJUDICADA' ? 'Adjudicada' : 'Pendiente';
@@ -124,15 +128,18 @@ export const DonacionesListView = () => {
           </Badge>
         }
         action={
-          <Button
-            colorPalette="teal"
-            borderRadius="xl"
-            gap="2"
-            onClick={() => navigate('/dashboard/donaciones/nueva')}
-          >
-            <PlusIcon />
-            <Text>Nueva Donación</Text>
-          </Button>
+          <HStack wrap="wrap">
+            <Button variant="outline" onClick={() => void fetchDonaciones()} loading={isLoading}>Actualizar</Button>
+            <Button
+              colorPalette="teal"
+              borderRadius="xl"
+              gap="2"
+              onClick={() => navigate('/dashboard/donaciones/nueva')}
+            >
+              <PlusIcon />
+              <Text>Nueva Donación</Text>
+            </Button>
+          </HStack>
         }
       />
 
@@ -200,6 +207,7 @@ export const DonacionesListView = () => {
                     (acc[segmento.subCategoria] ??= []).push(segmento);
                     return acc;
                   }, {});
+                  const estado = estadoVisible(d);
                   return (
                   <Table.Row key={d.id} _hover={{ bg: 'gray.50' }} transition="all 0.15s">
                     <Table.Cell fontWeight="medium" color="gray.800">
@@ -226,17 +234,23 @@ export const DonacionesListView = () => {
                       </Stack>
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {d.donanteNombre ?? '—'}
+                      {d.donanteNombre ?? '—'}{d.donanteId != null && <Text fontSize="xs">Donante #{d.donanteId}</Text>}
                     </Table.Cell>
                     <Table.Cell color="gray.600" fontSize="sm">
-                      {[...new Set(d.donacionesSegmentadas.map(segmento =>
-                        segmento.entidadBeneficiariaNombre ||
-                        (segmento.entidadBeneficiariaAsignadaId ? `Entidad ${segmento.entidadBeneficiariaAsignadaId}` : 'Sin asignar')
-                      ))].join(', ') || 'Sin asignar'}
+                      {d.donacionesSegmentadas.length === 0 ? 'Sin asignar' : (
+                        <Stack gap="1">
+                          {d.donacionesSegmentadas.map(segmento => (
+                            <Text key={segmento.id}>
+                              Segmento #{segmento.id} · {segmento.entidadBeneficiariaAsignadaId == null ? 'Sin asignar' :
+                                `Entidad #${segmento.entidadBeneficiariaAsignadaId}${segmento.entidadBeneficiariaNombre ? ` · ${segmento.entidadBeneficiariaNombre}` : ''}`}
+                            </Text>
+                          ))}
+                        </Stack>
+                      )}
                     </Table.Cell>
                     <Table.Cell>
-                      <Badge colorPalette={d.estado === 'ADJUDICADA' ? 'green' : 'yellow'} variant="subtle">
-                        {estadoVisible(d)}
+                      <Badge colorPalette={estado === 'Entregada' ? 'green' : estado.startsWith('Entrega parcial') ? 'blue' : d.estado === 'ADJUDICADA' ? 'teal' : 'yellow'} variant="subtle">
+                        {estado}
                       </Badge>
                     </Table.Cell>
                     <Table.Cell textAlign="right">

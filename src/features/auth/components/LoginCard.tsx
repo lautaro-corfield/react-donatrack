@@ -50,7 +50,14 @@ export const LoginCard = ({ staff = false }: { staff?: boolean }) => {
       </Card.Header>
 
       <Card.Body py="6">
-        {staff ? <LoginForm allowedRoles={['ADMIN', 'SUPERVISOR']} /> : (
+        {staff ? (
+          <Stack gap="4">
+            <LoginForm allowedRoles={['ADMIN', 'SUPERVISOR', 'ADMIN_LOGISTICA']} />
+            <RouterLink to="/registro/logistica" style={{ textAlign: 'center', color: 'var(--chakra-colors-teal-700)', fontWeight: 700 }}>
+              Activar cuenta de Logística
+            </RouterLink>
+          </Stack>
+        ) : (
           <Tabs.Root value={role} onValueChange={({ value }) => setRole(value as PublicRole)} fitted variant="plain" colorPalette="teal" w="100%">
             <Tabs.List bg="gray.100" borderWidth="1px" borderColor="gray.200" borderRadius="full" p="1" mb="6" w="100%">
               <Tabs.Trigger value="DONANTE" borderRadius="full" justifyContent="center" gap="2" _selected={{ bg: 'teal.600', color: 'white', shadow: 'sm' }}>

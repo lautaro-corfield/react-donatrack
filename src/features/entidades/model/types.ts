@@ -48,6 +48,7 @@ export interface SegmentoRecibido {
   eventos: EventoDonacion[];
   comprobante: { id: string; fechaEntrega: string; detalles: string | null } | null;
   fotos: number[];
+  puedeConfirmarRecepcion?: boolean;
 }
 
 export interface DonacionRecibida {
@@ -58,4 +59,4 @@ export interface DonacionRecibida {
   segmentos: SegmentoRecibido[];
 }
 
-export interface AvisoEntidad { id: number; asunto: string; mensaje: string; fecha: string | null }
+export interface AvisoEntidad { id: number | string; asunto: string; mensaje: string; fecha: string | null; segmentoId?: number | null }
