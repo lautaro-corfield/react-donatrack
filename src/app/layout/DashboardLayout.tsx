@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Drawer, Flex, HStack, Heading, IconButton } from '@chakra-ui/react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { useAuthStore } from '@/features/auth';
+import { donantesApi } from '@/features/donantes/api/donantesApi';
+import { entidadesApi } from '@/features/entidades/api/entidadesApi';
+import { useLecturaAvisos } from '@/features/avisos/lectura';
 import { Sidebar } from './Sidebar';
 
 const MenuIcon = () => (
@@ -28,6 +32,32 @@ const MenuIcon = () => (
  */
 export const DashboardLayout = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const user = useAuthStore(state => state.user);
+  const { pathname } = useLocation();
+  const [avisos, setAvisos] = useState<{ cuenta: typeof user; ids: (string | number)[] }>();
+  const { sinLeer } = useLecturaAvisos();
+  const hayAvisosSinLeer = avisos?.cuenta === user && avisos.ids.some(sinLeer);
+
+  useEffect(() => {
+    const cargar = user?.role === 'DONANTE' ? donantesApi.avisos :
+      user?.role === 'ENTIDAD_BENEFICIARIA' ? entidadesApi.avisos : null;
+    if (!cargar) return;
+    const controlador = new AbortController();
+    const actualizar = () => {
+      void cargar(controlador.signal).then(datos => {
+        if (!controlador.signal.aborted) setAvisos({ cuenta: user, ids: datos.map(aviso => aviso.id) });
+      }).catch(() => {});
+    };
+    actualizar();
+    window.addEventListener('focus', actualizar);
+    const intervalo = window.setInterval(actualizar, 30_000);
+    return () => {
+      controlador.abort();
+      window.removeEventListener('focus', actualizar);
+      window.clearInterval(intervalo);
+    };
+  }, [user, pathname]);
 
   return (
     <Flex h="100vh" w="100vw" overflow="hidden" direction="column" bg="gray.50">
@@ -68,7 +98,7 @@ export const DashboardLayout = () => {
         <Drawer.Backdrop />
         <Drawer.Positioner>
           <Drawer.Content maxW="280px" p="0" bg="white">
-            <Sidebar onNavigate={() => setIsDrawerOpen(false)} />
+            <Sidebar hayAvisosSinLeer={hayAvisosSinLeer} onNavigate={() => setIsDrawerOpen(false)} />
           </Drawer.Content>
         </Drawer.Positioner>
       </Drawer.Root>
@@ -85,7 +115,7 @@ export const DashboardLayout = () => {
           bg="white"
           flexShrink="0"
         >
-          <Sidebar />
+          <Sidebar hayAvisosSinLeer={hayAvisosSinLeer} />
         </Box>
 
         {/* Área de contenido dinámico donde se renderizan las vistas hijas */}

@@ -15,6 +15,7 @@ import { useAuthStore } from '@/features/auth';
 
 interface SidebarProps {
   onNavigate?: () => void;
+  hayAvisosSinLeer?: boolean;
 }
 
 // Iconos SVG integrados y limpios para cada opción de menú
@@ -181,7 +182,7 @@ const DONANTE_NAV_ITEMS: NavItem[] = [
  * Menú lateral de navegación para el Dashboard de DonaTrack.
  * Soporta indicación visual de ruta activa, filtrado por rol ADMIN y cierre de sesión seguro.
  */
-export const Sidebar = ({ onNavigate }: SidebarProps) => {
+export const Sidebar = ({ onNavigate, hayAvisosSinLeer }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
@@ -265,11 +266,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
             borderColor="gray.100"
           >
             <HStack gap="3" align="center">
-              <Avatar.Root size="sm">
+              <Avatar.Root size="sm" flexShrink="0">
                 <Avatar.Fallback name={user.name || 'Usuario'} />
                 {user.picture && <Avatar.Image src={user.picture} alt={user.name} />}
               </Avatar.Root>
-              <VStack align="start" gap="0" overflow="hidden" flex="1">
+              <VStack align="start" gap="0" minW="0" overflow="hidden" flex="1">
                 <Text
                   fontSize="xs"
                   fontWeight="bold"
@@ -282,16 +283,13 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
                 <Text fontSize="2xs" color="gray.500" truncate width="100%">
                   {user.email}
                 </Text>
+                {user.role && (
+                  <Badge colorPalette={isAdmin ? 'purple' : 'teal'} variant="subtle" size="xs"
+                    mt="1" maxW="100%" whiteSpace="normal" overflowWrap="anywhere">
+                    {user.role}
+                  </Badge>
+                )}
               </VStack>
-              {user.role && (
-                <Badge
-                  colorPalette={isAdmin ? 'purple' : 'teal'}
-                  variant="subtle"
-                  size="xs"
-                >
-                  {user.role}
-                </Badge>
-              )}
             </HStack>
           </Box>
         )}
@@ -313,6 +311,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
             const active = isActive(item.path);
             const IconComponent = item.icon;
             const isSpecial = item.requiredRole === 'ADMIN';
+            const mostrarPunto = hayAvisosSinLeer && IconComponent === BellIcon;
 
             return (
               <Button
@@ -320,6 +319,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
                 variant={active ? 'solid' : 'ghost'}
                 colorPalette={isSpecial ? 'purple' : active ? 'teal' : 'gray'}
                 justifyContent="flex-start"
+                w="100%"
+                minW="0"
+                h="auto"
+                minH="10"
                 size="md"
                 borderRadius="xl"
                 onClick={() => handleItemClick(item.path)}
@@ -345,10 +348,18 @@ export const Sidebar = ({ onNavigate }: SidebarProps) => {
                 }}
                 transition="all 0.2s ease"
               >
-                <IconComponent />
-                <Text fontSize="sm">{item.label}</Text>
+                <Box position="relative" flexShrink="0">
+                  <IconComponent />
+                  {mostrarPunto && (
+                    <Box position="absolute" top="-0.5" right="-0.5" w="2.5" h="2.5" bg="red.500"
+                      borderWidth="1px" borderColor="white" borderRadius="full">
+                      <Text srOnly>Avisos sin leer</Text>
+                    </Box>
+                  )}
+                </Box>
+                <Text fontSize="sm" minW="0" whiteSpace="normal" textAlign="start">{item.label}</Text>
                 {isSpecial && !active && (
-                  <Badge colorPalette="purple" variant="subtle" size="xs" ml="auto">
+                  <Badge colorPalette="purple" variant="subtle" size="xs" ml="auto" flexShrink="0">
                     Admin
                   </Badge>
                 )}
