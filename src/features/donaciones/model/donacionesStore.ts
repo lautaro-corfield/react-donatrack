@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { donacionesApi, errorDonacion } from '../api/donacionesApi';
 import type { DonacionesState } from './types';
 
-export const useDonacionesStore = create<DonacionesState>((set) => ({
+export const useDonacionesStore = create<DonacionesState>((set, get) => ({
   donaciones: [],
   isLoading: false,
   error: null,
@@ -31,10 +31,13 @@ export const useDonacionesStore = create<DonacionesState>((set) => ({
 
   createDonacion: async (dto) => {
     await donacionesApi.create(dto);
+    // Recargar la lista desde el backend para reflejar el alta sin refrescar a mano.
+    await get().fetchDonaciones();
   },
 
   updateDonacion: async (id, dto) => {
     await donacionesApi.update(id, dto);
+    await get().fetchDonaciones();
   },
 
   deleteDonacion: async (id) => {
