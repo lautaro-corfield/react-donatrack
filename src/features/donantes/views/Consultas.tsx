@@ -20,9 +20,9 @@ export function AvisosDonante() {
             <Heading as="h2" size="md">{aviso.asunto}</Heading>
             {aviso.fecha && <Text fontSize="sm">{new Date(aviso.fecha).toLocaleString('es-AR')}</Text>}
             <Text>{aviso.mensaje}</Text>
-            {aviso.mensaje.includes('/dashboard/mis-donaciones') && (
+            {(aviso.donacionId != null || aviso.mensaje?.includes('/dashboard/mis-donaciones')) && (
               <Button {...control} asChild variant="outline" alignSelf="start">
-                <Link to={`/dashboard/mis-donaciones${aviso.mensaje.match(/#donacion-\d+/)?.[0] ?? ''}`}>Ver trazabilidad</Link>
+                <Link to={`/dashboard/mis-donaciones${aviso.donacionId != null ? `#donacion-${aviso.donacionId}` : aviso.mensaje?.match(/#donacion-\d+/)?.[0] ?? ''}`}>Ver trazabilidad</Link>
               </Button>
             )}
           </Stack>

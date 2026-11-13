@@ -102,7 +102,7 @@ export const donantesApi = {
     httpClient.get<DonanteEncontrado[]>('/donantes/dni', { params: { dni } }).then(r => r.data),
   resumen: (signal: AbortSignal) => httpClient.get<ResumenDonante>('/donantes/me', { signal }).then(r => r.data),
   donaciones: (signal: AbortSignal) => httpClient.get<DonacionPropia[]>('/donantes/me/donaciones', { signal }).then(r => r.data),
-  avisos: (signal: AbortSignal) => httpClient.get<AvisoDonante[]>('/api/notificaciones/me', { signal }).then(r => r.data),
+  avisos: (signal: AbortSignal) => httpClient.get<AvisoDonante[]>('/donantes/me/avisos', { signal }).then(r => r.data),
   misiones: (signal: AbortSignal) => httpClient.get<Mision[]>('/incentivos/misiones', { signal }).then(r => r.data),
   visibilidad: (visible: boolean) => httpClient.put('/donantes/me/insignias', { visible }),
   alta: (tipo: 'humano' | 'juridico', datos: AltaDonante) => httpClient.post(`/donantes/${tipo}`, datos),
