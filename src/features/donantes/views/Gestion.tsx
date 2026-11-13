@@ -11,10 +11,10 @@ export function GestionDonantes() {
       <PageHeader title="Donantes" subtitle="Administrá los registros y accesos de personas y organizaciones donantes." />
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap="4" maxW="3xl">
         <Stack {...panel} gap="3" align="start">
-          <Heading as="h2" size="md">Registrar un donante</Heading>
-          <Text color="gray.600">Cargá los datos de una persona o una organización.</Text>
+          <Heading as="h2" size="md">Registrar donantes</Heading>
+          <Text color="gray.600">Cargá los datos de una persona, una organización o carga un csv.</Text>
           <Button minH="12" minW="12" borderRadius="xl" colorPalette="teal" onClick={() => navigate('/dashboard/donantes/nuevo')}>
-            Registrar nuevo donante
+            Registrar
           </Button>
         </Stack>
         <Stack {...panel} gap="3" align="start">
