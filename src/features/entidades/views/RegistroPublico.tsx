@@ -88,9 +88,25 @@ export function RegistroEntidadPublico() {
   }
 
   function mostrarError(e: unknown) {
-    const data = e && typeof e === 'object' && 'response' in e
-      ? (e as { response?: { data?: unknown } }).response?.data : undefined;
-    setError(typeof data === 'string' ? data : 'No se pudo crear la cuenta. Revisá los datos.');
+    const response = e && typeof e === 'object' && 'response' in e
+      ? (e as { response?: { data?: unknown; status?: number } }).response : undefined;
+    let data = response?.data;
+    if (typeof data === 'string' && data.trimStart().startsWith('{')) {
+      try { data = JSON.parse(data); } catch { data = undefined; }
+    }
+    if (data && typeof data === 'object') {
+      const { detail, message } = data as { detail?: unknown; message?: unknown };
+      data = typeof detail === 'string' && detail.trim() ? detail : message;
+    }
+    if (typeof data === 'string' && data.trim()) {
+      setError(data);
+    } else if (response?.status === 409) {
+      setError('Ya existe una cuenta o entidad con esos datos. Si necesitás recuperar el acceso, consultá a administración.');
+    } else if (!response || (response.status ?? 0) >= 500) {
+      setError('El servicio de registro no está disponible. Reintentá con el mismo correo y contraseña.');
+    } else {
+      setError('No se pudo crear la cuenta. Revisá los datos.');
+    }
   }
 
   async function registrarConPassword() {
@@ -128,7 +144,7 @@ export function RegistroEntidadPublico() {
           <ChakraLink asChild color="teal.700" fontWeight="semibold"><RouterLink to="/login">Ya tengo cuenta</RouterLink></ChakraLink>
         </HStack>
         <Card.Root bg="white" borderWidth="1px" borderRadius="3xl" shadow="sm">
-          <Card.Header><Card.Title><Heading size="lg">Creá la cuenta de tu entidad</Heading></Card.Title><Card.Description>Ingresá el correo institucional y los datos de tu organización.</Card.Description></Card.Header>
+          <Card.Header><Card.Title as="h2" textStyle="lg">Creá la cuenta de tu entidad</Card.Title><Card.Description>Ingresá el correo institucional y los datos de tu organización.</Card.Description></Card.Header>
           <Card.Body>
             <form onSubmit={siguiente}><Stack gap="7">
               <Box {...section}>
