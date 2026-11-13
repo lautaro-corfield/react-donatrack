@@ -110,14 +110,6 @@ export const donantesApi = {
     httpClient.post('/api/auth/registro/donante', { tipo, datos, password }).then(r => r.data),
   registrarPublico: (token: string, tipo: 'humano' | 'juridico', datos: AltaDonante) =>
     httpClient.post<RegistroDonanteResponse>('/api/auth/social/google/registro-donante', { token, tipo, datos }).then(r => r.data),
-  importar: (archivo: File) => {
-    const data = new FormData();
-    data.append('file', archivo);
-    return httpClient.post<{ success: boolean; message: string }>('/donantes/importar', data, {
-      headers: { 'Content-Type': undefined },
-      timeout: 180_000,
-    }).then(r => r.data);
-  },
 };
 
 export function errorDonantes(error: unknown) {

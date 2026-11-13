@@ -9,7 +9,6 @@ import { useAuthStore } from '@/features/auth';
 import { DonantesListView } from '@/features/donantes/views/List';
 import { GestionDonantes } from '@/features/donantes/views/Gestion';
 import { DonantesCreateView } from '@/features/donantes/views/Create';
-import { DonantesImportarView } from '@/features/donantes/views/Importar';
 import { RegistroDonantePublico } from '@/features/donantes/views/RegistroPublico';
 import { PortalDonante } from '@/features/donantes/views/Portal';
 import { MisDonaciones } from '@/features/donantes/views/Donaciones';
@@ -86,7 +85,6 @@ export const AppRouter = () => {
               <Route path="donantes" element={<GestionDonantes />} />
               <Route path="donantes/nuevo" element={<DonantesCreateView />} />
               <Route path="donantes/lista" element={<DonantesListView />} />
-              <Route path="donantes/importar" element={<DonantesImportarView />} />
               <Route path="entidades" element={<DirectorioEntidades />} />
             </Route>
             <Route element={<AccesoDashboard roles={['ADMIN']} />}>

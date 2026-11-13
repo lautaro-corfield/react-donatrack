@@ -50,9 +50,9 @@ export const CsvImportCard = () => {
     const csvContent =
       'TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono\n' +
       'HUMANA,DNI,12345678,Juan Perez,juan.perez@example.com,1122334455\n' +
-      'JURIDICA,CUIT,30-71234567-9,Fundacion Ayuda Humana,contacto@fundacionayuda.org,1199887766\n' +
+      'JURIDICA,CUIT,30-71234567-9,Fundacion Ayuda Humana,juan.perez@example.com,1199887766\n' +
       'HUMANA,DNI,87654321,Maria Gomez,maria.gomez@example.com,1155667788\n' +
-      'JURIDICA,CUIT,30-99887766-5,Supermercados del Sur S.A.,donaciones@supersur.com,1144332211\n';
+      'JURIDICA,CUIT,30-99887766-5,Empresa Comercial S.A.,juan.perez@example.com,1144332211\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
