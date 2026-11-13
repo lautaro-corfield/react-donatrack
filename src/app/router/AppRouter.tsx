@@ -32,6 +32,7 @@ import {
 
 import { ActivarCuentaLogistica, AdministradoresLogistica } from '@/features/logistics/views/Acceso';
 import { PanelLogistica } from '@/features/logistics/views/PanelLogistica';
+import { HistorialEnvios } from '@/features/logistics/views/HistorialEnvios';
 
 function InicioDashboard() {
   const rol = useAuthStore(state => state.user?.role);
@@ -96,6 +97,7 @@ export const AppRouter = () => {
             </Route>
             <Route element={<AccesoDashboard roles={['ADMIN_LOGISTICA']} />}>
               <Route path="logistica" element={<PanelLogistica />} />
+              <Route path="logistica/historial" element={<HistorialEnvios />} />
             </Route>
             <Route element={<AccesoDashboard roles={['ADMIN']} />}>
               <Route path="administradores-logistica" element={<AdministradoresLogistica />} />

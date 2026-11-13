@@ -19,6 +19,7 @@ export const logisticaApi = {
   choferes: (signal?: AbortSignal) => httpClient.get<Chofer[]>(base + '/choferes', { signal }).then(r => r.data),
   segmentos: (signal?: AbortSignal) => httpClient.get<SegmentoLogistico[]>(base + '/segmentos', { signal }).then(r => r.data),
   rutas: (signal?: AbortSignal) => httpClient.get<Recorrido[]>(base + '/rutas', { signal }).then(r => r.data),
+  historialRutas: (signal?: AbortSignal) => httpClient.get<Recorrido[]>(base + '/rutas/historial', { signal }).then(r => r.data),
   crearCamion: (datos: CamionDatos) => httpClient.post(base + '/camiones', datos),
   crearChofer: (datos: ChoferDatos) => httpClient.post(base + '/choferes', datos),
   crearRuta: (datos: CrearRuta) => httpClient.post(base + '/rutas', datos),

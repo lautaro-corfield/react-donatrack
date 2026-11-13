@@ -195,7 +195,7 @@ export const Sidebar = ({ onNavigate, hayAvisosSinLeer }: SidebarProps) => {
     user?.roles?.includes('ROLE_ADMIN');
 
   const isActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    return location.pathname === path || (path !== '/dashboard/logistica' && location.pathname.startsWith(`${path}/`));
   };
 
   const handleItemClick = (path: string) => {
@@ -212,7 +212,10 @@ export const Sidebar = ({ onNavigate, hayAvisosSinLeer }: SidebarProps) => {
 
   // Filtrado de pestañas según permisos
   const visibleNavItems = user?.role === 'ADMIN_LOGISTICA'
-    ? [{ label: 'Logística', path: '/dashboard/logistica', icon: DonacionesIcon }]
+    ? [
+      { label: 'Logística', path: '/dashboard/logistica', icon: DonacionesIcon },
+      { label: 'Historial envíos', path: '/dashboard/logistica/historial', icon: DonacionesIcon },
+    ]
     : user?.role === 'DONANTE' ? DONANTE_NAV_ITEMS : user?.role === 'ENTIDAD_BENEFICIARIA' ? ENTIDAD_NAV_ITEMS : NAV_ITEMS.filter((item) => {
     if (item.requiredRole === 'ADMIN') {
       return isAdmin;
